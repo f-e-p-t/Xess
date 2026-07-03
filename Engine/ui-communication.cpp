@@ -25,10 +25,15 @@ int main(){
     ParseFEN(FEN);
     PrintBoardToTerminal();
 
-    board.to_move = Colour::black;
     MoveList list;
     GenerateMoves(list);
     PrintMoveListToTerminal(list);
+
+    //std::bitset<64> x(rook_attacks[36][HashRookOccConfig(36, rook_rays_no_edges_occ_configs[36][4095])]);
+    //std::cout << "\n" << x << "\n\n";
+
+    //std::bitset<64> x(bishop_attacks[36][HashBishopOccConfig(36, bishop_rays_no_edges_occ_configs[36][511])]);
+    //std::cout << "\n" << x << "\n\n";
 
     // ---
 

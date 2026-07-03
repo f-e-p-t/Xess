@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
+std::string FEN = "8/4N3/8/2p1q3/5N2/8/8/7n b - - 0 1";
 
 enum Piece { pawn, knight, bishop, rook, queen, king };
 enum Colour { white, black };
@@ -304,17 +304,49 @@ void GenerateMoves(MoveList& list){
     }
 
     // Rooks
+    bitboard = board.pieces[board.to_move][Piece::rook];
 
-    // Magic bitboards:
-    // Pregenerate a [64] array of masks containing the attack squares for a piece on each square. for bishops these masks are 1 along the diagonals 0 elsewhere.
-    // make sure to exclude the edges (we assume the piece can take any piece to begin with, then later filter out the friendly captures with bitwise operations)
-    // apply the mask: O = bishop_diagonals[sq] & total_occ, giving what the bishop can see, colour-agnostic
-    // hash via: (O x magic) >> (64 - n)
-    // index into a lookup table to retrieve the legal moves
-    // filter out the friendly captures
-    // What is n? for a square sq on the board, n is the number of squares a bishop at that square can attack (excluding edges)
-    // What is magic? for the square sq, we find n first. magic is a u64 st multiplication by magic is a perfect hash, i.e. injective.
-    // Why not just use O as a key in a hashmap? too much overhead. magic centralises and packs the possibilities of O injectively into range 0 --> 2^n - 1
-    // after a right bitshift by 64 - n. How does it do this? Its existence is proven, and it is calculated by brute force on initialisation
+    while(bitboard){
+        index = GetLSBitIndex(bitboard);
+        O = rook_rays_no_edges[index] & total;
+        attacks = rook_attacks[index][HashRookOccConfig(index, O)] & ~friendly;
 
+        while(attacks){
+            target = GetLSBitIndex(attacks);
+
+            // Capture
+            if(GetBit(enemy, target)){ list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture); }
+            // Quiet move
+            else{ list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_move); }
+
+            attacks &= attacks - 1;
+        }
+
+        bitboard &= bitboard - 1;
+    }
+
+    // Queens
+    bitboard = board.pieces[board.to_move][Piece::queen];
+
+    while(bitboard){
+        index = GetLSBitIndex(bitboard);
+        O = bishop_rays_no_edges[index] & total;
+        u64 attacksB = bishop_attacks[index][HashBishopOccConfig(index, O)] & ~friendly;
+        O = rook_rays_no_edges[index] & total;
+        u64 attacksR = rook_attacks[index][HashRookOccConfig(index, O)] & ~friendly;
+        attacks = attacksB | attacksR;
+
+        while(attacks){
+            target = GetLSBitIndex(attacks);
+
+            // Capture
+            if(GetBit(enemy, target)){ list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture); }
+            // Quiet move
+            else{ list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_move); }
+        
+            attacks &= attacks - 1;
+        }
+
+        bitboard &= bitboard - 1;
+    }
 }
