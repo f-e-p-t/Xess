@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "4p3/8/6B1/8/B7/5N1N/2R3B1/5N1N w - - 0 1";
+std::string FEN = "8/8/8/8/8/8/8/8 w - - 0 1";
 
 enum Piece { pawn, knight, bishop, rook, queen, king };
 enum Colour { white, black };
@@ -302,6 +302,8 @@ void GenerateMoves(MoveList& list){
 
         bitboard &= bitboard - 1;
     }
+
+    // Rooks
 
     // Magic bitboards:
     // Pregenerate a [64] array of masks containing the attack squares for a piece on each square. for bishops these masks are 1 along the diagonals 0 elsewhere.

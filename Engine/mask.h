@@ -53,6 +53,8 @@ int NumberOfNonZeroBits(u64 bitboard){
 
 u64 knight_attacks[64];
 
+// ---
+
 u64 bishop_rays_no_edges[64];
 u64 bishop_rays_no_edges_occ_configs[64][512];
 u64 bishop_magic_numbers[64] = {
@@ -136,6 +138,13 @@ u64 HashBishopOccConfig(int sq, u64 occ_config){
     return ((occ_config * bishop_magic_numbers[sq]) >> bishop_magic_bitshifts[sq]);
 }
 
+// ---
+
+u64 rook_rays_no_edges[64];
+u64 rook_rays_no_edges_occ_configs[64][512];
+
+// ------
+
 void PrecomputeKnightAttacks(){
     for(int sq = 0; sq < 64; sq++){
         u64 place = 1ULL << sq;
@@ -149,6 +158,8 @@ void PrecomputeKnightAttacks(){
         );
     }
 }
+
+// ---
 
 void PrecomputeBishopRaysNoEdges(){
     for(int sq = 0; sq < 64; sq++){
@@ -222,11 +233,6 @@ void PrecomputeBishopRaysNoEdgesOccConfigs(){
     }
 }
 
-u64 GenerateRandomSparseU64(){
-    static std::mt19937_64 gen(1337);
-    return gen() & gen() & gen(); // & makes it more sparse
-}
-
 void PrecomputeBishopAttacksTable(){
     PrecomputeBishopRaysNoEdgesOccConfigs();
 
@@ -279,3 +285,53 @@ void PrecomputeBishopAttacksTable(){
     }
 }
 
+// ---
+
+void PrecomputeRookRaysNoEdges(){
+    for(int sq = 0; sq < 64; sq++){
+        u64 place = 1ULL << sq;
+        rook_rays_no_edges[sq] = 0ULL;
+        int difference;
+
+        // Up
+        difference = 8;
+        while(!(place & RANK_8) && !((place >> difference) & RANK_8)){
+            rook_rays_no_edges[sq] |= (place >> difference);
+            difference += 8;
+        }
+
+        // Left
+        difference = 1;
+        while(!(place & FILE_A) && !((place >> difference) & FILE_A)){
+            rook_rays_no_edges[sq] |= (place >> difference);
+            difference += 1;
+        }
+
+        // Right
+        difference = 1;
+        while(!(place & FILE_H) && !((place << difference) & FILE_H)){
+            rook_rays_no_edges[sq] |= (place << difference);
+            difference += 1;
+        }
+
+        // Down
+        difference = 8;
+        while(!(place & RANK_1) && !((place << difference) & RANK_1)){
+            std::cout << sq << ": " << difference << "\n";
+            rook_rays_no_edges[sq] |= (place << difference);
+            difference += 8;
+        }
+    }
+}
+
+void PrecomputeRookRaysNoEdgesOccConfigs(){
+    PrecomputeRookRaysNoEdges();
+
+    //
+}
+
+void PrecomputeRookAttacksTable(){
+    PrecomputeRookRaysNoEdgesOccConfigs();
+
+    //
+}

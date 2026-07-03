@@ -5,6 +5,7 @@
 void InitialiseAll(){
     PrecomputeKnightAttacks();
     PrecomputeBishopAttacksTable();
+    PrecomputeRookAttacksTable();
 }
 
 HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
@@ -24,15 +25,10 @@ int main(){
     ParseFEN(FEN);
     PrintBoardToTerminal();
 
-
+    board.to_move = Colour::black;
     MoveList list;
     GenerateMoves(list);
     PrintMoveListToTerminal(list);
-
-    //std::bitset<64> w(bishop_rays_no_edges_occ_configs[62][511]);
-    //std::cout << "\n" << w << "\n\n";
-    //std::bitset<64> x(bishop_attacks[62][HashBishopOccConfig(62, bishop_rays_no_edges_occ_configs[62][511])]);
-    //std::cout << "\n" << x << "\n\n";
 
     // ---
 
