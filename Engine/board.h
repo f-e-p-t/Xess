@@ -1,26 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "8/4N3/8/2p1q3/5N2/8/8/7n b - - 0 1";
-
-enum Piece { pawn, knight, bishop, rook, queen, king };
-enum Colour { white, black };
-enum Square { // Top-left ---> bottom-right as read
-    a8, b8, c8, d8, e8, f8, g8, h8,
-    a7, b7, c7, d7, e7, f7, g7, h7,
-    a6, b6, c6, d6, e6, f6, g6, h6,
-    a5, b5, c5, d5, e5, f5, g5, h5,
-    a4, b4, c4, d4, e4, f4, g4, h4,
-    a3, b3, c3, d3, e3, f3, g3, h3,
-    a2, b2, c2, d2, e2, f2, g2, h2,
-    a1, b1, c1, d1, e1, f1, g1, h1,
-    NO_SQUARE
-};
-enum CastlingRights { white_ks = 1, white_qs = 2, black_ks = 4, black_qs = 8 };
-enum MoveFlag { 
-    quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, quiet_knight_promo, six, seven, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
-    capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
-};
+std::string FEN = "8/8/8/8/8/8/5P2/8 w - - 0 1";
 
 class Board {
 public:
@@ -238,7 +219,7 @@ uint16_t AssembleMove(int source, int target, int flag){
     return (source | (target << 6) | (flag << 12));
 }
 
-void GenerateMoves(MoveList& list){
+void GeneratePseudoLegalMoves(MoveList& list){
     int flag = 0;
     u64 index = 0;
     list.count = 0;
@@ -254,9 +235,11 @@ void GenerateMoves(MoveList& list){
     if(board.to_move == Colour::white){
         bitboard = board.pieces[Colour::white][Piece::pawn];
 
-        //while(bitboard){
-        //    
-        //}
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+
+            bitboard &= bitboard - 1;
+        }
     }
 
     // Knights

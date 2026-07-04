@@ -7,6 +7,25 @@
 
 typedef std::uint64_t u64;
 
+enum Piece { pawn, knight, bishop, rook, queen, king };
+enum Colour { white, black };
+enum Square { // Top-left ---> bottom-right as read
+    a8, b8, c8, d8, e8, f8, g8, h8,
+    a7, b7, c7, d7, e7, f7, g7, h7,
+    a6, b6, c6, d6, e6, f6, g6, h6,
+    a5, b5, c5, d5, e5, f5, g5, h5,
+    a4, b4, c4, d4, e4, f4, g4, h4,
+    a3, b3, c3, d3, e3, f3, g3, h3,
+    a2, b2, c2, d2, e2, f2, g2, h2,
+    a1, b1, c1, d1, e1, f1, g1, h1,
+    NO_SQUARE
+};
+enum CastlingRights { white_ks = 1, white_qs = 2, black_ks = 4, black_qs = 8 };
+enum MoveFlag { 
+    quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, quiet_knight_promo, six, seven, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
+    capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
+};
+
 const u64 FILE_A = 0b0000000100000001000000010000000100000001000000010000000100000001;
 const u64 FILE_B = 0b0000001000000010000000100000001000000010000000100000001000000010;
 const u64 FILE_G = 0b0100000001000000010000000100000001000000010000000100000001000000;
@@ -50,6 +69,12 @@ int NumberOfNonZeroBits(u64 bitboard){
 
     return count;
 }
+
+// ---
+
+u64 pawn_attacks[2][64];
+
+// ---
 
 u64 knight_attacks[64];
 
@@ -223,7 +248,28 @@ u64 HashRookOccConfig(int sq, u64 occ_config){
     return ((occ_config * rook_magic_numbers[sq]) >> rook_magic_bitshifts[sq]);
 }
 
-// ------
+// ------------
+
+void PrecomputePawnAttacks(){
+    // White pawns
+    for(int sq = 0; sq < 64; sq++){
+        u64 place = 1ULL << sq;
+
+        // Single pushes (no rank 8 mask - pawns cannot be here)
+        pawn_attacks[Colour::white][sq] |= (place >> 8);
+
+        // Double pushes
+        if(a2 <= sq && sq <= h2){ pawn_attacks[Colour::white][sq] |= (place >> 16); }
+
+        // Left captures
+        pawn_attacks[Colour::white][sq] |= ((place & NOT_FILE_A) >> 9);
+
+        // Right captures
+        pawn_attacks[Colour::white][sq] |= ((place & NOT_FILE_H) >> 7);
+    }
+}
+
+// ---
 
 void PrecomputeKnightAttacks(){
     for(int sq = 0; sq < 64; sq++){
