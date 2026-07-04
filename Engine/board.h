@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "8/8/8/8/8/8/5P2/8 w - - 0 1";
+std::string FEN = "8/pppppppp/8/8/8/8/8/8 b - - 0 1";
 
 class Board {
 public:
@@ -235,11 +235,146 @@ void GeneratePseudoLegalMoves(MoveList& list){
     if(board.to_move == Colour::white){
         bitboard = board.pieces[Colour::white][Piece::pawn];
 
-        while(bitboard){
-            index = GetLSBitIndex(bitboard);
+        // The following attack boards must be disjoint
+        // Single pushes (excluding promotions)
+        u64 single_pushes = ((bitboard & NOT_RANK_7) >> 8) & ~total;
 
-            bitboard &= bitboard - 1;
-        }
+        // Quiet promotions
+        u64 quiet_promotions = ((bitboard & RANK_7) >> 8) & ~total;
+
+        // Double pushes
+        u64 double_pushes = ((single_pushes & RANK_3) >> 8) & ~total;
+
+        // Strictly normal captures
+        u64 normal_captures_left = ((bitboard & NOT_FILE_A & NOT_RANK_7) >> 9) & enemy;
+        u64 normal_captures_right = ((bitboard & NOT_FILE_H & NOT_RANK_7) >> 7) & enemy;
+
+        // En-passant captures
+        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) >> 9) & (1ULL << board.en_passant_square);
+        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) >> 7) & (1ULL << board.en_passant_square);
+
+        // Promotion captures
+        u64 promotion_captures_left = ((bitboard & NOT_FILE_A & RANK_7) >> 9) & enemy;
+        u64 promotion_captures_right = ((bitboard & NOT_FILE_H & RANK_7) >> 7) & enemy;
+
+        // Assemble moves from each
+        while(single_pushes){ target = GetLSBitIndex(single_pushes); index = target + 8;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_move);
+        single_pushes &= single_pushes - 1; }
+
+        while(quiet_promotions){ target = GetLSBitIndex(quiet_promotions); index = target + 8;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_queen_promo);
+        quiet_promotions &= quiet_promotions - 1; }
+
+        while(double_pushes){ target = GetLSBitIndex(double_pushes); index = target + 16;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::double_pawn_push);
+        double_pushes &= double_pushes - 1; }
+
+        while(normal_captures_left){ target = GetLSBitIndex(normal_captures_left); index = target + 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture);
+        normal_captures_left &= normal_captures_left - 1; }
+
+        while(normal_captures_right){ target = GetLSBitIndex(normal_captures_right); index = target + 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture);
+        normal_captures_right &= normal_captures_right - 1; }
+
+        while(en_passant_captures_left){ target = GetLSBitIndex(en_passant_captures_left); index = target + 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::EP_capture);
+        en_passant_captures_left &= en_passant_captures_left - 1; }
+    
+        while(en_passant_captures_right){ target = GetLSBitIndex(en_passant_captures_right); index = target + 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::EP_capture);
+        en_passant_captures_right &= en_passant_captures_right - 1; }
+
+        while(promotion_captures_left){ target = GetLSBitIndex(promotion_captures_left); index = target + 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_queen_promo);
+        promotion_captures_left &= promotion_captures_left - 1; }
+
+        while(promotion_captures_right){ target = GetLSBitIndex(promotion_captures_right); index = target + 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_queen_promo);
+        promotion_captures_right &= promotion_captures_right - 1; }
+    }
+
+    // Black pawns
+    else{
+        bitboard = board.pieces[Colour::black][Piece::pawn];
+
+        // The following attack boards must be disjoint
+        // Single pushes (excluding promotions)
+        u64 single_pushes = ((bitboard & NOT_RANK_2) << 8) & ~total;
+
+        // Quiet promotions
+        u64 quiet_promotions = ((bitboard & RANK_2) << 8) & ~total;
+
+        // Double pushes
+        u64 double_pushes = ((single_pushes & RANK_6) << 8) & ~total;
+
+        // Strictly normal captures
+        u64 normal_captures_left = ((bitboard & NOT_FILE_A & NOT_RANK_2) << 7) & enemy;
+        u64 normal_captures_right = ((bitboard & NOT_FILE_H & NOT_RANK_2) << 9) & enemy;
+
+        // En-passant captures
+        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) << 7) & (1ULL << board.en_passant_square);
+        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) << 9) & (1ULL << board.en_passant_square);
+
+        // Promotion captures
+        u64 promotion_captures_left = ((bitboard & NOT_FILE_A & RANK_2) << 7) & enemy;
+        u64 promotion_captures_right = ((bitboard & NOT_FILE_H & RANK_2) << 9) & enemy;
+
+        // Assemble moves from each
+        while(single_pushes){ target = GetLSBitIndex(single_pushes); index = target - 8;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_move);
+        single_pushes &= single_pushes - 1; }
+
+        while(quiet_promotions){ target = GetLSBitIndex(quiet_promotions); index = target - 8;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::quiet_queen_promo);
+        quiet_promotions &= quiet_promotions - 1; }
+
+        while(double_pushes){ target = GetLSBitIndex(double_pushes); index = target - 16;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::double_pawn_push);
+        double_pushes &= double_pushes - 1; }
+
+        while(normal_captures_left){ target = GetLSBitIndex(normal_captures_left); index = target - 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture);
+        normal_captures_left &= normal_captures_left - 1; }
+
+        while(normal_captures_right){ target = GetLSBitIndex(normal_captures_right); index = target - 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::normal_capture);
+        normal_captures_right &= normal_captures_right - 1; }
+
+        while(en_passant_captures_left){ target = GetLSBitIndex(en_passant_captures_left); index = target - 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::EP_capture);
+        en_passant_captures_left &= en_passant_captures_left - 1; }
+    
+        while(en_passant_captures_right){ target = GetLSBitIndex(en_passant_captures_right); index = target - 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::EP_capture);
+        en_passant_captures_right &= en_passant_captures_right - 1; }
+
+        while(promotion_captures_left){ target = GetLSBitIndex(promotion_captures_left); index = target - 7;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_queen_promo);
+        promotion_captures_left &= promotion_captures_left - 1; }
+
+        while(promotion_captures_right){ target = GetLSBitIndex(promotion_captures_right); index = target - 9;
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_knight_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_bishop_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_rook_promo);
+            list.list[list.count++] = AssembleMove(index, target, MoveFlag::capture_queen_promo);
+        promotion_captures_right &= promotion_captures_right - 1; }   
     }
 
     // Knights

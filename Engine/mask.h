@@ -22,7 +22,7 @@ enum Square { // Top-left ---> bottom-right as read
 };
 enum CastlingRights { white_ks = 1, white_qs = 2, black_ks = 4, black_qs = 8 };
 enum MoveFlag { 
-    quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, quiet_knight_promo, six, seven, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
+    quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, six, seven, quiet_knight_promo, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
     capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
 };
 
@@ -35,8 +35,14 @@ const u64 NOT_FILE_AB = ~(FILE_A | FILE_B);
 const u64 NOT_FILE_H = ~FILE_H;
 const u64 NOT_FILE_GH = ~(FILE_G | FILE_H);
 const u64 RANK_1 = 0b1111111100000000000000000000000000000000000000000000000000000000;
+const u64 RANK_2 = 0b0000000011111111000000000000000000000000000000000000000000000000;
+const u64 RANK_3 = 0b0000000000000000111111110000000000000000000000000000000000000000;
+const u64 RANK_6 = 0b0000000000000000000000000000000000000000111111110000000000000000;
+const u64 RANK_7 = 0b0000000000000000000000000000000000000000000000001111111100000000;
 const u64 RANK_8 = 0b0000000000000000000000000000000000000000000000000000000011111111;
 const u64 NOT_RANK_1 = ~RANK_1;
+const u64 NOT_RANK_2 = ~RANK_2;
+const u64 NOT_RANK_7 = ~RANK_7;
 const u64 NOT_RANK_8 = ~RANK_8;
 
 // Bitboard utilities
@@ -266,6 +272,23 @@ void PrecomputePawnAttacks(){
 
         // Right captures
         pawn_attacks[Colour::white][sq] |= ((place & NOT_FILE_H) >> 7);
+    }
+
+    // Black pawns
+    for(int sq = 0; sq < 64; sq++){
+        u64 place = 1ULL << sq;
+
+        // Single pushes
+        pawn_attacks[Colour::black][sq] |= (place << 8);
+
+        // Double pushes
+        if(a7 <= sq && sq <= h7){ pawn_attacks[Colour::black][sq] |= (place << 16); }
+
+        // Left captures
+        pawn_attacks[Colour::black][sq] |= ((place & NOT_FILE_A) << 7);
+
+        // Right captures
+        pawn_attacks[Colour::black][sq] |= ((place & NOT_FILE_H) << 9);
     }
 }
 
