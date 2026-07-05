@@ -17,6 +17,34 @@ public:
     bool castling_rights_black_qs = false;
     int halfmove_clock = 0; // Since a pawn was advanced or a capture was made (for the 50 move rule)
     int fullmove_number = 0;
+
+    Piece PieceAtSquare(int sq, Colour side){
+        for(int i = Piece::pawn; i <= Piece::king; i++){
+            if(pieces[side][i] & (1ULL << sq)){ return static_cast<Piece>(i); }
+        }
+
+        // Unreachable
+        return Piece::pawn;
+    }
+
+    int MakeMove(uint16_t move, Colour side){
+        int source = move & 0b0000000000111111;
+        int target = (move & 0b0000111111000000) >> 6;
+        int flag = (move & 0b1111000000000000) >> 12;
+
+        Piece source_piece = PieceAtSquare(source, side);
+
+        //std::cout << "\n\n" << source << " " << target << " " << flag << "\n";
+
+        switch(flag){
+            case MoveFlag::quiet_move:
+            {
+                //
+            }
+        }
+
+        return 0;
+    }
 private:
 
 };
@@ -175,7 +203,7 @@ void ParseFEN(std::string FEN){
 }
 
 struct MoveList {
-    u64 list[256];
+    uint16_t list[256];
     int count;
 };
 
