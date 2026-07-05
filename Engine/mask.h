@@ -1,4 +1,5 @@
 #include <iostream>
+#include <string>
 #include <cstdint>
 #include <bitset>
 #include <random>
@@ -45,6 +46,11 @@ const u64 NOT_RANK_2 = ~RANK_2;
 const u64 NOT_RANK_7 = ~RANK_7;
 const u64 NOT_RANK_8 = ~RANK_8;
 
+const u64 CASTLE_WHITE_KS_EMPTY_SQUARES = 0b0110000000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_QS_EMPTY_SQUARES = 0b0000111000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_BLACK_KS_EMPTY_SQUARES = 0b0000000000000000000000000000000000000000000000000000000001100000;
+const u64 CASTLE_BLACK_QS_EMPTY_SQUARES = 0b0000000000000000000000000000000000000000000000000000000000001110;
+
 // Bitboard utilities
 #define GetBitBinary(bitboard, square) (!!((bitboard) & (1ULL << (square))))
 
@@ -78,6 +84,7 @@ int NumberOfNonZeroBits(u64 bitboard){
 
 // ---
 
+// Attacks (diagonally) only
 u64 pawn_attacks[2][64];
 
 // ---
@@ -254,47 +261,35 @@ u64 HashRookOccConfig(int sq, u64 occ_config){
     return ((occ_config * rook_magic_numbers[sq]) >> rook_magic_bitshifts[sq]);
 }
 
+// ---
+
+u64 king_attacks[64];
+
 // ------------
 
-void PrecomputePawnAttacks(){
-    // White pawns
+void PrecomputePawnAttacksTable(){
     for(int sq = 0; sq < 64; sq++){
         u64 place = 1ULL << sq;
-
-        // Single pushes (no rank 8 mask - pawns cannot be here)
-        pawn_attacks[Colour::white][sq] |= (place >> 8);
-
-        // Double pushes
-        if(a2 <= sq && sq <= h2){ pawn_attacks[Colour::white][sq] |= (place >> 16); }
-
-        // Left captures
+        pawn_attacks[Colour::white][sq] = 0ULL;
+        pawn_attacks[Colour::white][sq] = 0ULL;
+ 
+        // Left captures white
         pawn_attacks[Colour::white][sq] |= ((place & NOT_FILE_A) >> 9);
 
-        // Right captures
+        // Right captures white
         pawn_attacks[Colour::white][sq] |= ((place & NOT_FILE_H) >> 7);
-    }
-
-    // Black pawns
-    for(int sq = 0; sq < 64; sq++){
-        u64 place = 1ULL << sq;
-
-        // Single pushes
-        pawn_attacks[Colour::black][sq] |= (place << 8);
-
-        // Double pushes
-        if(a7 <= sq && sq <= h7){ pawn_attacks[Colour::black][sq] |= (place << 16); }
-
-        // Left captures
+    
+        // Left captures black
         pawn_attacks[Colour::black][sq] |= ((place & NOT_FILE_A) << 7);
 
-        // Right captures
+        // Right captures black
         pawn_attacks[Colour::black][sq] |= ((place & NOT_FILE_H) << 9);
     }
 }
 
 // ---
 
-void PrecomputeKnightAttacks(){
+void PrecomputeKnightAttacksTable(){
     for(int sq = 0; sq < 64; sq++){
         u64 place = 1ULL << sq;
 
@@ -549,5 +544,20 @@ void PrecomputeRookAttacksTable(){
             }
             place = 1ULL << sq;
         }
+    }
+}
+
+// ---
+
+void PrecomputeKingAttacksTable(){
+    for(int sq = 0; sq < 64; sq++){
+        u64 place = 1ULL << sq;
+
+        king_attacks[sq] = (
+            ((place & NOT_RANK_8 & NOT_FILE_A) >> 9) | ((place & NOT_RANK_8) >> 8) |
+            ((place & NOT_RANK_8 & NOT_FILE_H) >> 7) | ((place & NOT_FILE_A) >> 1) |
+            ((place & NOT_FILE_H) << 1) | ((place & NOT_FILE_A & NOT_RANK_1) << 7) |
+            ((place & NOT_RANK_1) << 8) | ((place & NOT_RANK_1 & NOT_FILE_H) << 9)
+        );
     }
 }

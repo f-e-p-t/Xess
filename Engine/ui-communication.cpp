@@ -3,10 +3,11 @@
 #include <iostream>
 
 void InitialiseAll(){
-    PrecomputePawnAttacks();
-    PrecomputeKnightAttacks();
+    PrecomputePawnAttacksTable();
+    PrecomputeKnightAttacksTable();
     PrecomputeBishopAttacksTable();
     PrecomputeRookAttacksTable();
+    PrecomputeKingAttacksTable();
 }
 
 HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
