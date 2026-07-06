@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "rnbqkb1r/1ppp1pp1/p4n2/4p2p/P3P3/5N2/1PPPBPPP/RNBQK2R w KQkq - 0 5";
+std::string FEN = "rnbqk2r/1ppp1pp1/p4n2/2b1p2p/P3P3/5N2/1PPPBPPP/RNBQK2R w KQ - 0 5";
 
 class Board {
 public:
@@ -66,6 +66,8 @@ public:
         Piece source_piece = PieceAtSquare(source, side);
 
         en_passant_square = Square::NO_SQUARE;
+
+        // Here, apply CR mask [source square] and [target square] to CR. target square if, for example, one captures an unmoved rook
 
         halfmove_clock++;
         if(side == Colour::black){ fullmove_number++; }
