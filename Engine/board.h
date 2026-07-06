@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "r1bqkb1r/pppp1ppp/2n2n2/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 1";
+std::string FEN = "rnbqkb1r/1ppp1pp1/p4n2/4p2p/P3P3/5N2/1PPPBPPP/RNBQK2R w KQkq - 0 5";
 
 class Board {
 public:
@@ -11,10 +11,7 @@ public:
 
     Colour to_move;
     uint8_t en_passant_square = Square::NO_SQUARE; // Can only be one square at a time
-    bool castling_rights_white_ks = false; // Castling rights defaulted to false. Handled in FEN parser
-    bool castling_rights_white_qs = false;
-    bool castling_rights_black_ks = false;
-    bool castling_rights_black_qs = false;
+    uint8_t castling_rights = 0;
     int halfmove_clock = 0; // Since a pawn was advanced or a capture was made (for the 50 move rule)
     int fullmove_number = 0;
 
@@ -27,24 +24,110 @@ public:
         return Piece::pawn;
     }
 
-    int MakeMove(uint16_t move, Colour side){
+    bool SquareAttackedBy(int sq, Colour side){
+        u64 O;
+        u64 other = colour_occ[!side];
+
+        // If the square can see the piece, the piece can see the square
+        // By pawns
+        if(pawn_attacks[!side][sq] & pieces[side][Piece::pawn]){ return true; }
+
+        // By knights
+        if(knight_attacks[sq] & pieces[side][Piece::knight]){ return true; }
+
+        // By rooks (queens)
+        O = rook_rays_no_edges[sq] & total_occ;
+        if((rook_attacks[sq][HashRookOccConfig(sq, O)] & ~other) & (pieces[side][Piece::rook] | pieces[side][Piece::queen])){ return true; }
+
+        // By bishops (queens)
+        O = bishop_rays_no_edges[sq] & total_occ;
+        if((bishop_attacks[sq][HashBishopOccConfig(sq, O)] & ~other) & (pieces[side][Piece::bishop] | pieces[side][Piece::queen])){ return true; }
+
+        // By king
+        if(king_attacks[sq] & pieces[side][Piece::king]){ return true; }
+
+        // Not square is not attacked
+        return false;
+    }
+
+    bool InCheck(Colour side){
+        int king_sq = GetLSBitIndex(pieces[side][Piece::king]);
+        return SquareAttackedBy(king_sq, static_cast<Colour>(!side));
+    }
+
+    void MakeMove(uint16_t move, Colour side){
         int source = move & 0b0000000000111111;
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
 
+        u64 source_place = 1ULL << source;
+        u64 target_place = 1Ull << target;
+
         Piece source_piece = PieceAtSquare(source, side);
+
+        en_passant_square = Square::NO_SQUARE;
+
+        halfmove_clock++;
+        if(side == Colour::black){ fullmove_number++; }
 
         //std::cout << "\n\n" << source << " " << target << " " << flag << "\n";
 
         switch(flag){
             case MoveFlag::quiet_move:
             {
-                //
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                if(source_piece == Piece::pawn){ halfmove_clock = 0; }
+
+                break;
+            }
+
+            case MoveFlag::double_pawn_push:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                halfmove_clock = 0;
+
+                to_move == Colour::white ? en_passant_square = target + 8 : en_passant_square = target - 8;
+                
+                break;
+            }
+
+            case MoveFlag::KS_castle:
+            {
+                if(side == Colour::white){
+                    pieces[side][Piece::king] ^= CASTLE_WHITE_KS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_WHITE_KS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_WHITE_KS_OCC_XOR;
+                    total_occ ^= CASTLE_WHITE_KS_OCC_XOR;
+                }
+
+                else{
+                    pieces[side][Piece::king] ^= CASTLE_BLACK_KS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_BLACK_KS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_BLACK_KS_OCC_XOR;
+                    total_occ ^= CASTLE_BLACK_KS_OCC_XOR;
+                }
+            }
+
+            default:
+            {
+                // Unreachable
+                break;
             }
         }
 
-        return 0;
+        to_move = static_cast<Colour>(!to_move);
+
+        return;
     }
+
 private:
 
 };
@@ -65,8 +148,8 @@ void PrintBitboardToTerminal(u64 bitboard){
 
 void PrintBoardToTerminal(){
     std::cout << "\n-----------------------------------------------\n" << "to move: " << board.to_move << " | CR: " <<
-    (int)board.castling_rights_white_ks << (int)board.castling_rights_white_qs << (int)board.castling_rights_black_ks << (int)board.castling_rights_black_qs <<
-    " | EP: " << (int)board.en_passant_square << " | HMC: " << board.halfmove_clock << " | FMN: " << board.fullmove_number << "\n-----------------------------------------------\n";
+    GetBitBinary(board.castling_rights, 0) << GetBitBinary(board.castling_rights, 1) << GetBitBinary(board.castling_rights, 2) << GetBitBinary(board.castling_rights, 3) <<
+    " | EP: " << IToSq((int)board.en_passant_square) << " | HMC: " << board.halfmove_clock << " | FMN: " << board.fullmove_number << "\n-----------------------------------------------\n";
 
     for(int rk = 0; rk < 8; rk++){
         std::cout << "|  ";
@@ -166,10 +249,10 @@ void ParseFEN(std::string FEN){
     // Castling Rights
     while(FEN[pos] != ' '){
         switch(FEN[pos]){
-            case 'K': { board.castling_rights_white_ks = true; break; }
-            case 'Q': { board.castling_rights_white_qs = true; break; }
-            case 'k': { board.castling_rights_black_ks = true; break; }
-            case 'q': { board.castling_rights_black_qs = true; break; }
+            case 'K': { board.castling_rights += 1; break; }
+            case 'Q': { board.castling_rights += 2; break; }
+            case 'k': { board.castling_rights += 4; break; }
+            case 'q': { board.castling_rights += 8; break; }
             default: break;
         }
 
@@ -206,28 +289,6 @@ struct MoveList {
     uint16_t list[256];
     int count;
 };
-
-std::string IToSq(int index){
-    switch(index){
-        case 0: { return "a8"; } case 1: { return "b8"; } case 2: { return "c8"; } case 3: { return "d8"; }
-        case 4: { return "e8"; } case 5: { return "f8"; } case 6: { return "g8"; } case 7: { return "h8"; }
-        case 8: { return "a7"; } case 9: { return "b7"; } case 10: { return "c7"; } case 11: { return "d7"; }
-        case 12: { return "e7"; } case 13: { return "f7"; } case 14: { return "g7"; } case 15: { return "h7"; }
-        case 16: { return "a6"; } case 17: { return "b6"; } case 18: { return "c6"; } case 19: { return "d6"; }
-        case 20: { return "e6"; } case 21: { return "f6"; } case 22: { return "g6"; } case 23: { return "h6"; }
-        case 24: { return "a5"; } case 25: { return "b5"; } case 26: { return "c5"; } case 27: { return "d5"; }
-        case 28: { return "e5"; } case 29: { return "f5"; } case 30: { return "g5"; } case 31: { return "h5"; }
-        case 32: { return "a4"; } case 33: { return "b4"; } case 34: { return "c4"; } case 35: { return "d4"; }
-        case 36: { return "e4"; } case 37: { return "f4"; } case 38: { return "g4"; } case 39: { return "h4"; }
-        case 40: { return "a3"; } case 41: { return "b3"; } case 42: { return "c3"; } case 43: { return "d3"; }
-        case 44: { return "e3"; } case 45: { return "f3"; } case 46: { return "g3"; } case 47: { return "h3"; }
-        case 48: { return "a2"; } case 49: { return "b2"; } case 50: { return "c2"; } case 51: { return "d2"; }
-        case 52: { return "e2"; } case 53: { return "f2"; } case 54: { return "g2"; } case 55: { return "h2"; }
-        case 56: { return "a1"; } case 57: { return "b1"; } case 58: { return "c1"; } case 59: { return "d1"; }
-        case 60: { return "e1"; } case 61: { return "f1"; } case 62: { return "g1"; } case 63: { return "h1"; }
-        default: { return ""; }
-    }
-}
 
 void PrintMoveListToTerminal(MoveList list){
     std::cout << "count: " << list.count << "\n";
@@ -271,39 +332,6 @@ void PrintMoveListToTerminal(MoveList list){
 */
 uint16_t AssembleMove(int source, int target, int flag){
     return (source | (target << 6) | (flag << 12));
-}
-
-// Check if the given side is attacking the given square
-bool SquareAttackedBy(int sq, Colour side){
-    u64 O;
-    u64 other = board.colour_occ[!side];
-    u64 total = board.total_occ;
-
-    // If the square can see the piece, the piece can see the square
-    // By pawns
-    if(pawn_attacks[!side][sq] & board.pieces[side][Piece::pawn]){ return true; }
-
-    // By knights
-    if(knight_attacks[sq] & board.pieces[side][Piece::knight]){ return true; }
-
-    // By rooks (queens)
-    O = rook_rays_no_edges[sq] & total;
-    if((rook_attacks[sq][HashRookOccConfig(sq, O)] & ~other) & (board.pieces[side][Piece::rook] | board.pieces[side][Piece::queen])){ return true; }
-
-    // By bishops (queens)
-    O = bishop_rays_no_edges[sq] & total;
-    if((bishop_attacks[sq][HashBishopOccConfig(sq, O)] & ~other) & (board.pieces[side][Piece::bishop] | board.pieces[side][Piece::queen])){ return true; }
-
-    // By king
-    if(king_attacks[sq] & board.pieces[side][Piece::king]){ return true; }
-
-    // Not square is not attacked
-    return false;
-}
-
-bool InCheck(Colour side){
-    int king_sq = GetLSBitIndex(board.pieces[side][Piece::king]);
-    return SquareAttackedBy(king_sq, static_cast<Colour>(!side));
 }
 
 void GeneratePseudoLegalMoves(MoveList& list){
@@ -581,22 +609,22 @@ void GeneratePseudoLegalMoves(MoveList& list){
 
         // KS
         if(
-            board.castling_rights_white_ks &&
+            (board.castling_rights & 0b00000001) &&
             !(CASTLE_WHITE_KS_EMPTY_SQUARES & total) &&
-            !SquareAttackedBy(Square::e1, Colour::black) &&
-            !SquareAttackedBy(Square::f1, Colour::black) &&
-            !SquareAttackedBy(Square::g1, Colour::black)
+            !board.SquareAttackedBy(Square::e1, Colour::black) &&
+            !board.SquareAttackedBy(Square::f1, Colour::black) &&
+            !board.SquareAttackedBy(Square::g1, Colour::black)
         ){
             list.list[list.count++] = AssembleMove(Square::e1, Square::g1, MoveFlag::KS_castle);
         }
 
         // QS
         if(
-            board.castling_rights_white_qs &&
+            (board.castling_rights & 0b00000010) &&
             !(CASTLE_WHITE_QS_EMPTY_SQUARES & total) &&
-            !SquareAttackedBy(Square::e1, Colour::black) &&
-            !SquareAttackedBy(Square::d1, Colour::black) &&
-            !SquareAttackedBy(Square::c1, Colour::black)
+            !board.SquareAttackedBy(Square::e1, Colour::black) &&
+            !board.SquareAttackedBy(Square::d1, Colour::black) &&
+            !board.SquareAttackedBy(Square::c1, Colour::black)
         ){
             list.list[list.count++] = AssembleMove(Square::e1, Square::c1, MoveFlag::QS_castle);
         }
@@ -607,22 +635,22 @@ void GeneratePseudoLegalMoves(MoveList& list){
 
         // KS
         if(
-            board.castling_rights_black_ks &&
+            (board.castling_rights & 0b00000100) &&
             !(CASTLE_BLACK_KS_EMPTY_SQUARES & total) &&
-            !SquareAttackedBy(Square::e8, Colour::white) &&
-            !SquareAttackedBy(Square::f8, Colour::white) &&
-            !SquareAttackedBy(Square::g8, Colour::white)
+            !board.SquareAttackedBy(Square::e8, Colour::white) &&
+            !board.SquareAttackedBy(Square::f8, Colour::white) &&
+            !board.SquareAttackedBy(Square::g8, Colour::white)
         ){
             list.list[list.count++] = AssembleMove(Square::e8, Square::g8, MoveFlag::KS_castle);
         }
 
         // QS
         if(
-            board.castling_rights_black_qs &&
+            (board.castling_rights & 0b00001000) &&
             !(CASTLE_BLACK_QS_EMPTY_SQUARES & total) &&
-            !SquareAttackedBy(Square::e8, Colour::white) &&
-            !SquareAttackedBy(Square::d8, Colour::white) &&
-            !SquareAttackedBy(Square::c8, Colour::white)
+            !board.SquareAttackedBy(Square::e8, Colour::white) &&
+            !board.SquareAttackedBy(Square::d8, Colour::white) &&
+            !board.SquareAttackedBy(Square::c8, Colour::white)
         ){
             list.list[list.count++] = AssembleMove(Square::e8, Square::c8, MoveFlag::QS_castle);
         }

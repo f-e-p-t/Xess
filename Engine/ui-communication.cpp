@@ -30,7 +30,8 @@ int main(){
     MoveList list;
     GeneratePseudoLegalMoves(list);
     PrintMoveListToTerminal(list);
-    //board.MakeMove(list.list[31], board.to_move);
+    board.MakeMove(list.list[7], board.to_move);
+    PrintBoardToTerminal();
 
     // ---
 

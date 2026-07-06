@@ -21,12 +21,13 @@ enum Square { // Top-left ---> bottom-right as read
     a1, b1, c1, d1, e1, f1, g1, h1,
     NO_SQUARE
 };
-enum CastlingRights { white_ks = 1, white_qs = 2, black_ks = 4, black_qs = 8 };
+enum CastlingRights { white_ks, white_qs, black_ks, black_qs };
 enum MoveFlag { 
     quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, six, seven, quiet_knight_promo, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
     capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
 };
 
+// For pregenerating attack tables
 const u64 FILE_A = 0b0000000100000001000000010000000100000001000000010000000100000001;
 const u64 FILE_B = 0b0000001000000010000000100000001000000010000000100000001000000010;
 const u64 FILE_G = 0b0100000001000000010000000100000001000000010000000100000001000000;
@@ -46,10 +47,25 @@ const u64 NOT_RANK_2 = ~RANK_2;
 const u64 NOT_RANK_7 = ~RANK_7;
 const u64 NOT_RANK_8 = ~RANK_8;
 
+// For generating castling moves
 const u64 CASTLE_WHITE_KS_EMPTY_SQUARES = 0b0110000000000000000000000000000000000000000000000000000000000000;
 const u64 CASTLE_WHITE_QS_EMPTY_SQUARES = 0b0000111000000000000000000000000000000000000000000000000000000000;
 const u64 CASTLE_BLACK_KS_EMPTY_SQUARES = 0b0000000000000000000000000000000000000000000000000000000001100000;
 const u64 CASTLE_BLACK_QS_EMPTY_SQUARES = 0b0000000000000000000000000000000000000000000000000000000000001110;
+
+// For making moves
+const u64 CASTLE_WHITE_KS_KING_XOR = 0b0101000000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_KS_ROOK_XOR = 0b1010000000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_KS_OCC_XOR = 0b1111000000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_QS_KING_XOR = 0b0001010000000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_QS_ROOK_XOR = 0b0000100100000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_WHITE_QS_OCC_XOR = 0b0001110100000000000000000000000000000000000000000000000000000000;
+const u64 CASTLE_BLACK_KS_KING_XOR = 0b0000000000000000000000000000000000000000000000000000000001010000;
+const u64 CASTLE_BLACK_KS_ROOK_XOR = 0b0000000000000000000000000000000000000000000000000000000010100000;
+const u64 CASTLE_BLACK_KS_OCC_XOR = 0b0000000000000000000000000000000000000000000000000000000011110000;
+const u64 CASTLE_BLACK_QS_KING_XOR = 0b0000000000000000000000000000000000000000000000000000000000010100;
+const u64 CASTLE_BLACK_QS_ROOK_XOR = 0b0000000000000000000000000000000000000000000000000000000000001001;
+const u64 CASTLE_BLACK_QS_OCC_XOR = 0b0000000000000000000000000000000000000000000000000000000000011101;
 
 // Bitboard utilities
 #define GetBitBinary(bitboard, square) (!!((bitboard) & (1ULL << (square))))
@@ -80,6 +96,28 @@ int NumberOfNonZeroBits(u64 bitboard){
     }
 
     return count;
+}
+
+std::string IToSq(int index){
+    switch(index){
+        case 0: { return "a8"; } case 1: { return "b8"; } case 2: { return "c8"; } case 3: { return "d8"; }
+        case 4: { return "e8"; } case 5: { return "f8"; } case 6: { return "g8"; } case 7: { return "h8"; }
+        case 8: { return "a7"; } case 9: { return "b7"; } case 10: { return "c7"; } case 11: { return "d7"; }
+        case 12: { return "e7"; } case 13: { return "f7"; } case 14: { return "g7"; } case 15: { return "h7"; }
+        case 16: { return "a6"; } case 17: { return "b6"; } case 18: { return "c6"; } case 19: { return "d6"; }
+        case 20: { return "e6"; } case 21: { return "f6"; } case 22: { return "g6"; } case 23: { return "h6"; }
+        case 24: { return "a5"; } case 25: { return "b5"; } case 26: { return "c5"; } case 27: { return "d5"; }
+        case 28: { return "e5"; } case 29: { return "f5"; } case 30: { return "g5"; } case 31: { return "h5"; }
+        case 32: { return "a4"; } case 33: { return "b4"; } case 34: { return "c4"; } case 35: { return "d4"; }
+        case 36: { return "e4"; } case 37: { return "f4"; } case 38: { return "g4"; } case 39: { return "h4"; }
+        case 40: { return "a3"; } case 41: { return "b3"; } case 42: { return "c3"; } case 43: { return "d3"; }
+        case 44: { return "e3"; } case 45: { return "f3"; } case 46: { return "g3"; } case 47: { return "h3"; }
+        case 48: { return "a2"; } case 49: { return "b2"; } case 50: { return "c2"; } case 51: { return "d2"; }
+        case 52: { return "e2"; } case 53: { return "f2"; } case 54: { return "g2"; } case 55: { return "h2"; }
+        case 56: { return "a1"; } case 57: { return "b1"; } case 58: { return "c1"; } case 59: { return "d1"; }
+        case 60: { return "e1"; } case 61: { return "f1"; } case 62: { return "g1"; } case 63: { return "h1"; }
+        default: { return "-"; }
+    }
 }
 
 // ---
