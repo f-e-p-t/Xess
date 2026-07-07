@@ -17,9 +17,9 @@ HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
 }
 
 int main(){
-    Fepttp server = Fepttp(8000);
+    //Fepttp server = Fepttp(8000);
 
-    server.chain.push_back(UICommunication);
+    //server.chain.push_back(UICommunication);
 
     // ---
 
@@ -29,16 +29,19 @@ int main(){
 
     MoveList list;
     GeneratePseudoLegalMoves(list);
-    PrintMoveListToTerminal(list);
+    //PrintMoveListToTerminal(list);
 
-    UnmakeMoveGameState x = board.MakeMove(list.list[9], board.to_move);
-    PrintBoardToTerminal();
-    board.UnmakeMove(list.list[9], board.to_move, x);
-    PrintBoardToTerminal();
+    //UnmakeMoveGameState x = board.MakeMove(list.list[11], board.to_move);
+    //PrintBoardToTerminal();
+    //board.UnmakeMove(list.list[11], board.to_move, x);
+    //PrintBoardToTerminal();
+
+    perft(7);
+    std::cout << "\n" << nodes << "\n";
 
     // ---
 
-    server.run();
+    //server.run();
 
     return 0;
 }

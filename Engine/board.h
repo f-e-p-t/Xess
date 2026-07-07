@@ -1,7 +1,9 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "rnbqk2r/p1pp1pp1/5n1p/1pb1p3/2B1P2P/5N2/PPPP1PP1/RNBQ1K1R b kq - 0 6";
+std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+int64_t nodes = 0;
 
 class UnmakeMoveGameState {
 public:
@@ -10,6 +12,7 @@ public:
     int halfmove_clock;
     int fullmove_number;
 
+    Piece source_piece;
     Piece target_piece;
 
     UnmakeMoveGameState(uint8_t ep, uint8_t cr, int hmc, int fmn): en_passant_square(ep), castling_rights(cr), halfmove_clock(hmc), fullmove_number(fmn) {}
@@ -164,7 +167,6 @@ public:
 
             case MoveFlag::EP_capture:
             {
-                std::cout << "\n\n" << IToSq(source) << " " << IToSq(target) << "\n\n";
                 u64 both_places = source_place | target_place;
                 pieces[side][Piece::pawn] ^= both_places;
                 colour_occ[side] ^= both_places;
@@ -287,13 +289,216 @@ public:
 
         to_move = static_cast<Colour>(!to_move);
 
+        state.source_piece = source_piece;
         state.target_piece = target_piece;
 
         return state;
     }
 
-    void UnmakeMove(uint16_t move, Colour side, UnmakeMoveGameState prev_state){
-        //
+    void UnmakeMove(uint16_t move, Colour current_side, UnmakeMoveGameState prev_state){
+        Colour side = static_cast<Colour>(!current_side);
+
+        en_passant_square = prev_state.en_passant_square;
+        castling_rights = prev_state.castling_rights;
+        halfmove_clock = prev_state.halfmove_clock;
+        fullmove_number = prev_state.fullmove_number;
+
+        int source = move & 0b0000000000111111;
+        int target = (move & 0b0000111111000000) >> 6;
+        int flag = (move & 0b1111000000000000) >> 12;
+        u64 source_place = 1ULL << source;
+        u64 target_place = 1Ull << target;
+        Piece source_piece = prev_state.source_piece;
+        Piece target_piece = prev_state.target_piece;
+
+        switch(flag){
+            case MoveFlag::quiet_move:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::double_pawn_push:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+                
+                break;
+            }
+
+            case MoveFlag::KS_castle:
+            {
+                if(side == Colour::white){
+                    pieces[side][Piece::king] ^= CASTLE_WHITE_KS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_WHITE_KS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_WHITE_KS_OCC_XOR;
+                    total_occ ^= CASTLE_WHITE_KS_OCC_XOR;
+                } else{
+                    pieces[side][Piece::king] ^= CASTLE_BLACK_KS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_BLACK_KS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_BLACK_KS_OCC_XOR;
+                    total_occ ^= CASTLE_BLACK_KS_OCC_XOR;
+                }
+
+                break;
+            }
+
+            case MoveFlag::QS_castle:
+            {
+                if(side == Colour::white){
+                    pieces[side][Piece::king] ^= CASTLE_WHITE_QS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_WHITE_QS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_WHITE_QS_OCC_XOR;
+                    total_occ ^= CASTLE_WHITE_QS_OCC_XOR;
+                } else{
+                    pieces[side][Piece::king] ^= CASTLE_BLACK_QS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_BLACK_QS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_BLACK_QS_OCC_XOR;
+                    total_occ ^= CASTLE_BLACK_QS_OCC_XOR;
+                }
+
+                break;
+            }
+
+            case MoveFlag::normal_capture:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::EP_capture:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+                if(side == Colour::white){
+                    pieces[!side][Piece::pawn] ^= (target_place << 8); colour_occ[!side] ^= (target_place << 8); total_occ ^= (target_place << 8);
+                } else{
+                    pieces[!side][Piece::pawn] ^= (target_place >> 8); colour_occ[!side] ^= (target_place >> 8); total_occ ^= (target_place >> 8);
+                }
+
+                break;
+            }
+
+            case MoveFlag::quiet_knight_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::knight] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_bishop_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::bishop] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_rook_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::rook] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_queen_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::queen] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::capture_knight_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::knight] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_bishop_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::bishop] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_rook_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::rook] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_queen_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::queen] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            default:
+            {
+                // Unreachable
+                break;
+            }
+        }
+
+        to_move = static_cast<Colour>(!to_move);
+
+        return;
     }
 private:
 
@@ -810,4 +1015,21 @@ void GeneratePseudoLegalMoves(MoveList& list){
             list.list[list.count++] = AssembleMove(Square::e8, Square::c8, MoveFlag::QS_castle);
         }
     }
+}
+
+void perft(int depth){
+    if(depth == 0){
+        nodes++; return;
+    }
+
+    MoveList list; GeneratePseudoLegalMoves(list);
+    for(int i = 0; i < list.count; i++){
+        if(depth == 7) std::cout << "root node started ";
+        UnmakeMoveGameState IrrInfo = board.MakeMove(list.list[i], board.to_move);
+        if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, IrrInfo); continue; }
+        perft(depth - 1);
+        board.UnmakeMove(list.list[i], board.to_move, IrrInfo);
+    }
+
+    return;
 }
