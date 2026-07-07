@@ -17,9 +17,9 @@ HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
 }
 
 int main(){
-    //Fepttp server = Fepttp(8000);
+    Fepttp server = Fepttp(8000);
 
-    //server.chain.push_back(UICommunication);
+    server.chain.push_back(UICommunication);
 
     // ---
 
@@ -36,12 +36,15 @@ int main(){
     //board.UnmakeMove(list.list[11], board.to_move, x);
     //PrintBoardToTerminal();
 
-    perft(7);
+    perft(6);
     std::cout << "\n" << nodes << "\n";
+    //std::cout << "\n" << promos << "\n";
+    //std::cout << "\n" << captures << "\n";
+    //std::cout << "\n" << EP_captures << "\n";
 
     // ---
 
-    //server.run();
+    server.run();
 
     return 0;
 }

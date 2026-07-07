@@ -1,9 +1,12 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+std::string FEN = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
 
 int64_t nodes = 0;
+int64_t promos = 0;
+int64_t captures = 0;
+int64_t EP_captures = 0;
 
 class UnmakeMoveGameState {
 public:
@@ -111,7 +114,7 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
-                to_move == Colour::white ? en_passant_square = target + 8 : en_passant_square = target - 8;
+                side == Colour::white ? en_passant_square = target + 8 : en_passant_square = target - 8;
                 
                 break;
             }
@@ -710,6 +713,8 @@ void GeneratePseudoLegalMoves(MoveList& list){
     if(board.to_move == Colour::white){
         bitboard = board.pieces[Colour::white][Piece::pawn];
 
+        u64 EP_bitboard = (board.en_passant_square == Square::NO_SQUARE) ? 0ULL : (1ULL << board.en_passant_square);
+
         // The following attack boards must be disjoint
         // Single pushes (excluding promotions)
         u64 single_pushes = ((bitboard & NOT_RANK_7) >> 8) & ~total;
@@ -725,8 +730,8 @@ void GeneratePseudoLegalMoves(MoveList& list){
         u64 normal_captures_right = ((bitboard & NOT_FILE_H & NOT_RANK_7) >> 7) & enemy;
 
         // En-passant captures
-        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) >> 9) & (1ULL << board.en_passant_square);
-        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) >> 7) & (1ULL << board.en_passant_square);
+        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) >> 9) & EP_bitboard;
+        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) >> 7) & EP_bitboard;
 
         // Promotion captures
         u64 promotion_captures_left = ((bitboard & NOT_FILE_A & RANK_7) >> 9) & enemy;
@@ -783,6 +788,8 @@ void GeneratePseudoLegalMoves(MoveList& list){
     else{
         bitboard = board.pieces[Colour::black][Piece::pawn];
 
+        u64 EP_bitboard = (board.en_passant_square == Square::NO_SQUARE) ? 0ULL : (1ULL << board.en_passant_square);
+
         // The following attack boards must be disjoint
         // Single pushes (excluding promotions)
         u64 single_pushes = ((bitboard & NOT_RANK_2) << 8) & ~total;
@@ -798,8 +805,8 @@ void GeneratePseudoLegalMoves(MoveList& list){
         u64 normal_captures_right = ((bitboard & NOT_FILE_H & NOT_RANK_2) << 9) & enemy;
 
         // En-passant captures
-        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) << 7) & (1ULL << board.en_passant_square);
-        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) << 9) & (1ULL << board.en_passant_square);
+        u64 en_passant_captures_left = ((bitboard & NOT_FILE_A) << 7) & EP_bitboard;
+        u64 en_passant_captures_right = ((bitboard & NOT_FILE_H) << 9) & EP_bitboard;
 
         // Promotion captures
         u64 promotion_captures_left = ((bitboard & NOT_FILE_A & RANK_2) << 7) & enemy;
@@ -1024,9 +1031,12 @@ void perft(int depth){
 
     MoveList list; GeneratePseudoLegalMoves(list);
     for(int i = 0; i < list.count; i++){
-        if(depth == 7) std::cout << "root node started ";
+        //if((list.list[i] >> 12) == 5 && depth == 1){ PrintMoveListToTerminal(list); }
         UnmakeMoveGameState IrrInfo = board.MakeMove(list.list[i], board.to_move);
         if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, IrrInfo); continue; }
+        //if((list.list[i] >> 12) >= 8 && (list.list[i] >> 12) <= 15 && depth == 1){ promos++; }
+        //if(((list.list[i] >> 12) == 4 || (list.list[i] >> 12) == 5 || (list.list[i] >> 12) == 12 || (list.list[i] >> 12) == 13 || (list.list[i] >> 12) == 14 || (list.list[i] //>> 12) == 15) && depth == 1){ captures++; }
+        //if((list.list[i] >> 12) == 5 && depth == 1){ EP_captures++; }
         perft(depth - 1);
         board.UnmakeMove(list.list[i], board.to_move, IrrInfo);
     }
