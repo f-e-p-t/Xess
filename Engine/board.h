@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "rnbqk2r/1ppp1pp1/p4n2/2b1p2p/P3P3/5N2/1PPPBPPP/RNBQK2R w KQ - 0 5";
+std::string FEN = "5n1q/6P1/1k6/p1p5/8/8/1p1K2R1/R1B5 b - - 0 1";
 
 class Board {
 public:
@@ -14,6 +14,8 @@ public:
     uint8_t castling_rights = 0;
     int halfmove_clock = 0; // Since a pawn was advanced or a capture was made (for the 50 move rule)
     int fullmove_number = 0;
+
+    // ------------
 
     Piece PieceAtSquare(int sq, Colour side){
         for(int i = Piece::pawn; i <= Piece::king; i++){
@@ -46,7 +48,7 @@ public:
         // By king
         if(king_attacks[sq] & pieces[side][Piece::king]){ return true; }
 
-        // Not square is not attacked
+        // Square is not attacked
         return false;
     }
 
@@ -67,9 +69,11 @@ public:
 
         en_passant_square = Square::NO_SQUARE;
 
-        // Here, apply CR mask [source square] and [target square] to CR. target square if, for example, one captures an unmoved rook
+        castling_rights &= castling_rights_mask_table[source];
+        castling_rights &= castling_rights_mask_table[target];
 
-        halfmove_clock++;
+        source_piece == Piece::pawn ? halfmove_clock = 0 : halfmove_clock++;
+
         if(side == Colour::black){ fullmove_number++; }
 
         //std::cout << "\n\n" << source << " " << target << " " << flag << "\n";
@@ -82,8 +86,6 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
-                if(source_piece == Piece::pawn){ halfmove_clock = 0; }
-
                 break;
             }
 
@@ -93,8 +95,6 @@ public:
                 pieces[side][source_piece] ^= both_places;
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
-
-                halfmove_clock = 0;
 
                 to_move == Colour::white ? en_passant_square = target + 8 : en_passant_square = target - 8;
                 
@@ -108,14 +108,162 @@ public:
                     pieces[side][Piece::rook] ^= CASTLE_WHITE_KS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_WHITE_KS_OCC_XOR;
                     total_occ ^= CASTLE_WHITE_KS_OCC_XOR;
-                }
-
-                else{
+                } else{
                     pieces[side][Piece::king] ^= CASTLE_BLACK_KS_KING_XOR;
                     pieces[side][Piece::rook] ^= CASTLE_BLACK_KS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_BLACK_KS_OCC_XOR;
                     total_occ ^= CASTLE_BLACK_KS_OCC_XOR;
                 }
+
+                break;
+            }
+
+            case MoveFlag::QS_castle:
+            {
+                if(side == Colour::white){
+                    pieces[side][Piece::king] ^= CASTLE_WHITE_QS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_WHITE_QS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_WHITE_QS_OCC_XOR;
+                    total_occ ^= CASTLE_WHITE_QS_OCC_XOR;
+                } else{
+                    pieces[side][Piece::king] ^= CASTLE_BLACK_QS_KING_XOR;
+                    pieces[side][Piece::rook] ^= CASTLE_BLACK_QS_ROOK_XOR;
+                    colour_occ[side] ^= CASTLE_BLACK_QS_OCC_XOR;
+                    total_occ ^= CASTLE_BLACK_QS_OCC_XOR;
+                }
+
+                break;
+            }
+
+            case MoveFlag::normal_capture:
+            {
+                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                u64 both_places = source_place | target_place;
+                pieces[side][source_piece] ^= both_places;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                halfmove_clock = 0;
+
+                break;
+            }
+
+            case MoveFlag::EP_capture:
+            {
+                std::cout << "\n\n" << IToSq(source) << " " << IToSq(target) << "\n\n";
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= both_places;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+                if(side == Colour::white){
+                    pieces[!side][Piece::pawn] ^= (target_place << 8); colour_occ[!side] ^= (target_place << 8); total_occ ^= (target_place << 8);
+                } else{
+                    pieces[!side][Piece::pawn] ^= (target_place >> 8); colour_occ[!side] ^= (target_place >> 8); total_occ ^= (target_place >> 8);
+                }
+
+                break;
+            }
+
+            case MoveFlag::quiet_knight_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::knight] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_bishop_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::bishop] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_rook_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::rook] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::quiet_queen_promo:
+            {
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::queen] ^= target_place;
+                colour_occ[side] ^= both_places;
+                total_occ ^= both_places;
+
+                break;
+            }
+
+            case MoveFlag::capture_knight_promo:
+            {
+                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::knight] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_bishop_promo:
+            {
+                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::bishop] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_rook_promo:
+            {
+                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::rook] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
+            }
+
+            case MoveFlag::capture_queen_promo:
+            {
+                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                u64 both_places = source_place | target_place;
+                pieces[side][Piece::pawn] ^= source_place;
+                pieces[side][Piece::queen] ^= target_place;
+                colour_occ[side] ^= both_places;
+                pieces[!side][target_piece] ^= target_place;
+                colour_occ[!side] ^= target_place;
+                total_occ ^= source_place;
+
+                break;
             }
 
             default:
@@ -135,18 +283,6 @@ private:
 };
 
 Board board;
-
-void PrintBitboardToTerminal(u64 bitboard){
-    int index = 0;
-    for(int i = 0; i < 8; i++){
-        for(int j = 0; j < 8; j++){
-            std::cout << GetBitBinary(bitboard, index) << "  ";
-            index++;
-        }
-        std::cout << "\n";
-    }
-    std::cout << "\n";
-}
 
 void PrintBoardToTerminal(){
     std::cout << "\n-----------------------------------------------\n" << "to move: " << board.to_move << " | CR: " <<
@@ -297,7 +433,7 @@ void PrintMoveListToTerminal(MoveList list){
     for(int i = 0; i < list.count; i++){
         uint16_t mask;
 
-        std::cout << "(";
+        std::cout << "([" << i << "] ";
 
         mask = (1ULL << 4) - 1;
         std::cout << "flags: " << ((list.list[i] >> 12) & mask) << " | ";

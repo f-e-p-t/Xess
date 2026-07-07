@@ -120,6 +120,18 @@ std::string IToSq(int index){
     }
 }
 
+void PrintBitboardToTerminal(u64 bitboard){
+    int index = 0;
+    for(int i = 0; i < 8; i++){
+        for(int j = 0; j < 8; j++){
+            std::cout << GetBitBinary(bitboard, index) << "  ";
+            index++;
+        }
+        std::cout << "\n";
+    }
+    std::cout << "\n";
+}
+
 // ------------
 
 // Attacks (diagonally) only
@@ -611,4 +623,4 @@ uint8_t castling_rights_mask_table[64] = {
     0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111,
     0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111, 0b00001111,
     0b00001101, 0b00001111, 0b00001111, 0b00001111, 0b00001100, 0b00001111, 0b00001111, 0b00001110
-}
+};
