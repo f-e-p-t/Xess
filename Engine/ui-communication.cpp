@@ -30,7 +30,10 @@ int main(){
     MoveList list;
     GeneratePseudoLegalMoves(list);
     PrintMoveListToTerminal(list);
-    board.MakeMove(list.list[13], board.to_move);
+
+    UnmakeMoveGameState x = board.MakeMove(list.list[9], board.to_move);
+    PrintBoardToTerminal();
+    board.UnmakeMove(list.list[9], board.to_move, x);
     PrintBoardToTerminal();
 
     // ---

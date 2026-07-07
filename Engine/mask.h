@@ -8,7 +8,7 @@
 
 typedef std::uint64_t u64;
 
-enum Piece { pawn, knight, bishop, rook, queen, king };
+enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
 enum Square { // Top-left ---> bottom-right as read
     a8, b8, c8, d8, e8, f8, g8, h8,

@@ -1,7 +1,19 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "5n1q/6P1/1k6/p1p5/8/8/1p1K2R1/R1B5 b - - 0 1";
+std::string FEN = "rnbqk2r/p1pp1pp1/5n1p/1pb1p3/2B1P2P/5N2/PPPP1PP1/RNBQ1K1R b kq - 0 6";
+
+class UnmakeMoveGameState {
+public:
+    uint8_t en_passant_square;
+    uint8_t castling_rights;
+    int halfmove_clock;
+    int fullmove_number;
+
+    Piece target_piece;
+
+    UnmakeMoveGameState(uint8_t ep, uint8_t cr, int hmc, int fmn): en_passant_square(ep), castling_rights(cr), halfmove_clock(hmc), fullmove_number(fmn) {}
+};
 
 class Board {
 public:
@@ -22,8 +34,7 @@ public:
             if(pieces[side][i] & (1ULL << sq)){ return static_cast<Piece>(i); }
         }
 
-        // Unreachable
-        return Piece::pawn;
+        return Piece::NO_PIECE;
     }
 
     bool SquareAttackedBy(int sq, Colour side){
@@ -57,15 +68,18 @@ public:
         return SquareAttackedBy(king_sq, static_cast<Colour>(!side));
     }
 
-    void MakeMove(uint16_t move, Colour side){
+    UnmakeMoveGameState MakeMove(uint16_t move, Colour side){
         int source = move & 0b0000000000111111;
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
+
+        UnmakeMoveGameState state = UnmakeMoveGameState(en_passant_square, castling_rights, halfmove_clock, fullmove_number);
 
         u64 source_place = 1ULL << source;
         u64 target_place = 1Ull << target;
 
         Piece source_piece = PieceAtSquare(source, side);
+        Piece target_piece = Piece::NO_PIECE;
 
         en_passant_square = Square::NO_SQUARE;
 
@@ -75,8 +89,6 @@ public:
         source_piece == Piece::pawn ? halfmove_clock = 0 : halfmove_clock++;
 
         if(side == Colour::black){ fullmove_number++; }
-
-        //std::cout << "\n\n" << source << " " << target << " " << flag << "\n";
 
         switch(flag){
             case MoveFlag::quiet_move:
@@ -137,7 +149,7 @@ public:
 
             case MoveFlag::normal_capture:
             {
-                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
                 u64 both_places = source_place | target_place;
                 pieces[side][source_piece] ^= both_places;
                 colour_occ[side] ^= both_places;
@@ -212,7 +224,7 @@ public:
 
             case MoveFlag::capture_knight_promo:
             {
-                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
                 u64 both_places = source_place | target_place;
                 pieces[side][Piece::pawn] ^= source_place;
                 pieces[side][Piece::knight] ^= target_place;
@@ -226,7 +238,7 @@ public:
 
             case MoveFlag::capture_bishop_promo:
             {
-                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
                 u64 both_places = source_place | target_place;
                 pieces[side][Piece::pawn] ^= source_place;
                 pieces[side][Piece::bishop] ^= target_place;
@@ -240,7 +252,7 @@ public:
 
             case MoveFlag::capture_rook_promo:
             {
-                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
                 u64 both_places = source_place | target_place;
                 pieces[side][Piece::pawn] ^= source_place;
                 pieces[side][Piece::rook] ^= target_place;
@@ -254,7 +266,7 @@ public:
 
             case MoveFlag::capture_queen_promo:
             {
-                Piece target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
+                target_piece = PieceAtSquare(target, static_cast<Colour>(!side));
                 u64 both_places = source_place | target_place;
                 pieces[side][Piece::pawn] ^= source_place;
                 pieces[side][Piece::queen] ^= target_place;
@@ -275,9 +287,14 @@ public:
 
         to_move = static_cast<Colour>(!to_move);
 
-        return;
+        state.target_piece = target_piece;
+
+        return state;
     }
 
+    void UnmakeMove(uint16_t move, Colour side, UnmakeMoveGameState prev_state){
+        //
+    }
 private:
 
 };
