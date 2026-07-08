@@ -25,7 +25,7 @@ int main(){
 
     ParseFEN(FEN);
     InitialiseAll();
-    engine.search_depth = 6;
+    engine.search_depth = 7;
     PrintBoardToTerminal();
 
 

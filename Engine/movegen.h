@@ -1,7 +1,8 @@
 #include "mask.h"
+#include "heatmap.h"
 #include <iostream>
 
-std::string FEN = "r1b2r2/ppp3pk/7p/3pP2Q/3n4/5NP1/PP4KP/4qR2 w - - 0 1";
+std::string FEN = "1rb2rnk/6qp/p1p2p2/2Np1P1Q/4p1P1/1P6/P1P1BR1P/R6K b - - 0 1";
 
 int64_t nodes = 0;
 
