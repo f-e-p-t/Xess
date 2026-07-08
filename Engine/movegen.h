@@ -1,12 +1,9 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "r3k2r/Pppp1ppp/1b3nbN/nP6/BBP1P3/q4N2/Pp1P2PP/R2Q1RK1 w kq - 0 1";
+std::string FEN = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1";
 
 int64_t nodes = 0;
-int64_t promos = 0;
-int64_t captures = 0;
-int64_t EP_captures = 0;
 
 class UnmakeMoveGameState {
 public:
@@ -1031,12 +1028,8 @@ void perft(int depth){
 
     MoveList list; GeneratePseudoLegalMoves(list);
     for(int i = 0; i < list.count; i++){
-        //if((list.list[i] >> 12) == 5 && depth == 1){ PrintMoveListToTerminal(list); }
         UnmakeMoveGameState IrrInfo = board.MakeMove(list.list[i], board.to_move);
         if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, IrrInfo); continue; }
-        //if((list.list[i] >> 12) >= 8 && (list.list[i] >> 12) <= 15 && depth == 1){ promos++; }
-        //if(((list.list[i] >> 12) == 4 || (list.list[i] >> 12) == 5 || (list.list[i] >> 12) == 12 || (list.list[i] >> 12) == 13 || (list.list[i] >> 12) == 14 || (list.list[i] //>> 12) == 15) && depth == 1){ captures++; }
-        //if((list.list[i] >> 12) == 5 && depth == 1){ EP_captures++; }
         perft(depth - 1);
         board.UnmakeMove(list.list[i], board.to_move, IrrInfo);
     }

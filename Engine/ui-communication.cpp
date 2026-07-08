@@ -1,5 +1,5 @@
 #include "./fepttp-distrib/fepttp.h"
-#include "board.h"
+#include "eval.h"
 #include <iostream>
 
 void InitialiseAll(){
@@ -23,24 +23,12 @@ int main(){
 
     // ---
 
-    InitialiseAll();
     ParseFEN(FEN);
+    InitialiseAll();
     PrintBoardToTerminal();
-
-    MoveList list;
-    GeneratePseudoLegalMoves(list);
-    //PrintMoveListToTerminal(list);
-
-    //UnmakeMoveGameState x = board.MakeMove(list.list[11], board.to_move);
-    //PrintBoardToTerminal();
-    //board.UnmakeMove(list.list[11], board.to_move, x);
-    //PrintBoardToTerminal();
 
     perft(6);
     std::cout << "\n" << nodes << "\n";
-    //std::cout << "\n" << promos << "\n";
-    //std::cout << "\n" << captures << "\n";
-    //std::cout << "\n" << EP_captures << "\n";
 
     // ---
 

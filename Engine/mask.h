@@ -8,6 +8,12 @@
 
 typedef std::uint64_t u64;
 
+const int PAWN_VALUE_CTP = 100;
+const int KNIGHT_VALUE_CTP = 320;
+const int BISHOP_VALUE_CTP = 330;
+const int ROOK_VALUE_CTP = 500;
+const int QUEEN_VALUE_CTP = 900;
+
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
 enum Square { // Top-left ---> bottom-right as read
@@ -87,15 +93,7 @@ int GetLSBitIndex(u64 bitboard){
 }
 
 int NumberOfNonZeroBits(u64 bitboard){
-    int count = 0;
-
-    while(bitboard){
-        count++;
-        GetLSBitIndex(bitboard);
-        bitboard &= bitboard - 1;
-    }
-
-    return count;
+    return __builtin_popcountll(bitboard);
 }
 
 std::string IToSq(int index){
