@@ -1,7 +1,7 @@
 #include "mask.h"
 #include <iostream>
 
-std::string FEN = "rnbqkb1r/pppppppp/8/8/8/8/PPPPPPPP/RNB1KBNR w KQkq - 0 1";
+std::string FEN = "r1b2r2/ppp3pk/7p/3pP2Q/3n4/5NP1/PP4KP/4qR2 w - - 0 1";
 
 int64_t nodes = 0;
 
@@ -649,6 +649,20 @@ struct MoveList {
     uint16_t list[256];
     int count;
 };
+
+void PrintMoveToTerminal(uint16_t move){
+    uint16_t mask;
+    mask = (1ULL << 4) - 1;
+    std::cout << "flags: " << ((move >> 12) & mask) << " | ";
+
+    mask = (1ULL << 6) - 1;
+    std::cout << "to " << IToSq(((move >> 6) & mask)) << " ";
+
+    mask = (1ULL << 6) - 1;
+    std::cout << "from " << IToSq(((move >> 0) & mask));
+    
+    std::cout << "\n";
+}
 
 void PrintMoveListToTerminal(MoveList list){
     std::cout << "count: " << list.count << "\n";

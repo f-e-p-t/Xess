@@ -1,6 +1,9 @@
 #include "movegen.h"
 #include <iostream>
 
+// Temporary measure
+uint16_t best_move;
+
 class Evaluation {
 public:
     int Material(){
@@ -36,16 +39,34 @@ Evaluation eval;
 
 class Engine {
 public:
+    int search_depth;
+
     int Search(int depth, int alpha, int beta){
         if(depth == 0){
+            nodes++;
             return eval.StaticEvaluation();
         }
 
+        bool legal_moves = false;
         MoveList list; GeneratePseudoLegalMoves(list);
         for(int i = 0; i < list.count; i++){
-            
+            UnmakeMoveGameState IrrInfo = board.MakeMove(list.list[i], board.to_move);
+            if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, IrrInfo); continue; }
+            legal_moves = true;
+            int evaluation = -Search(depth - 1, -beta, -alpha);
+            board.UnmakeMove(list.list[i], board.to_move, IrrInfo);
+            // VVV best_move is a temporary measure
+            if(evaluation > alpha && depth == search_depth){ best_move = list.list[i]; }
+            alpha = std::max(alpha, evaluation);
+            if(alpha >= beta){ return alpha; }
         }
+
+        if(!legal_moves){ return (board.InCheck(board.to_move) ? -CHECKMATE - depth :  STALEMATE); }
+
+        return alpha;
     }
 private:
 
 };
+
+Engine engine;

@@ -25,10 +25,13 @@ int main(){
 
     ParseFEN(FEN);
     InitialiseAll();
+    engine.search_depth = 6;
     PrintBoardToTerminal();
 
-    perft(6);
+
+    std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
     std::cout << "\n" << nodes << "\n";
+    PrintMoveToTerminal(best_move);
 
     // ---
 
