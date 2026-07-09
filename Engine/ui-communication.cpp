@@ -34,9 +34,8 @@ int main(){
     InitialiseAll();
     PrintBoardToTerminal();
 
-    std::cout << board.hash_key;
-
     //perft(6); std::cout << nodes << "\n";
+
     
     std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
     std::cout << "\n" << nodes << "\n";

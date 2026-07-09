@@ -18,11 +18,12 @@ public:
     uint8_t castling_rights;
     int halfmove_clock;
     int fullmove_number;
+    u64 hash_key;
 
     Piece source_piece;
     Piece target_piece;
 
-    UnmakeMoveGameState(uint8_t ep, uint8_t cr, int hmc, int fmn): en_passant_square(ep), castling_rights(cr), halfmove_clock(hmc), fullmove_number(fmn) {}
+    UnmakeMoveGameState(uint8_t ep, uint8_t cr, int hmc, int fmn, u64 hk): en_passant_square(ep), castling_rights(cr), halfmove_clock(hmc), fullmove_number(fmn), hash_key(hk) {}
 };
 
 class Board {
@@ -85,13 +86,20 @@ public:
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
 
-        UnmakeMoveGameState state = UnmakeMoveGameState(en_passant_square, castling_rights, halfmove_clock, fullmove_number);
+        // updating the hashkey:
+        // To do:
+        // 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15
+
+        UnmakeMoveGameState state = UnmakeMoveGameState(en_passant_square, castling_rights, halfmove_clock, fullmove_number, hash_key);
 
         u64 source_place = 1ULL << source;
         u64 target_place = 1Ull << target;
 
         Piece source_piece = PieceAtSquare(source, side);
         Piece target_piece = Piece::NO_PIECE;
+
+        // EP square exists - it will be removed this move - must hash it out of the hash key before it is lost
+        if(en_passant_square != Square::NO_SQUARE){ hash_key ^= EP_keys[en_passant_square]; }
 
         en_passant_square = Square::NO_SQUARE;
 
@@ -110,6 +118,9 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
+                hash_key ^= piece_keys[side][source_piece][source];
+                hash_key ^= piece_keys[side][source_piece][target];
+                
                 break;
             }
 
@@ -120,7 +131,12 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
-                side == Colour::white ? en_passant_square = target + 8 : en_passant_square = target - 8;
+                // EP square has opened up - hash it into the hash key
+                if(side == Colour::white){ en_passant_square = target + 8; hash_key ^= EP_keys[en_passant_square]; }
+                else{ en_passant_square = target - 8; hash_key ^= EP_keys[en_passant_square]; }
+
+                hash_key ^= piece_keys[side][source_piece][source];
+                hash_key ^= piece_keys[side][source_piece][target];
                 
                 break;
             }
@@ -298,6 +314,9 @@ public:
 
         to_move = static_cast<Colour>(!to_move);
 
+        hash_key ^= castling_keys[castling_rights];
+        hash_key ^= side_key;
+
         state.source_piece = source_piece;
         state.target_piece = target_piece;
 
@@ -311,6 +330,7 @@ public:
         castling_rights = prev_state.castling_rights;
         halfmove_clock = prev_state.halfmove_clock;
         fullmove_number = prev_state.fullmove_number;
+        hash_key = prev_state.hash_key;
 
         int source = move & 0b0000000000111111;
         int target = (move & 0b0000111111000000) >> 6;
