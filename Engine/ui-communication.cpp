@@ -3,6 +3,9 @@
 #include <iostream>
 
 void InitialiseAll(){
+    TT.SetSize(engine.transposition_table_size_MB);
+    InitialiseZobristKeys();
+    InitialiseHashKey();
     PrecomputePawnAttacksTable();
     PrecomputeKnightAttacksTable();
     PrecomputeBishopAttacksTable();
@@ -10,6 +13,7 @@ void InitialiseAll(){
     PrecomputeKingAttacksTable();
 }
 
+// Gameplay loop
 HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
     res.status_code = 200;
 
@@ -23,12 +27,17 @@ int main(){
 
     // ---
 
+    engine.search_depth = 7;
+    engine.transposition_table_size_MB = 512;
+
     ParseFEN(FEN);
     InitialiseAll();
-    engine.search_depth = 7;
     PrintBoardToTerminal();
 
+    std::cout << board.hash_key;
 
+    //perft(6); std::cout << nodes << "\n";
+    
     std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
     std::cout << "\n" << nodes << "\n";
     PrintMoveToTerminal(best_move);

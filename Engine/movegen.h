@@ -2,9 +2,15 @@
 #include "heatmap.h"
 #include <iostream>
 
-std::string FEN = "1rb2rnk/6qp/p1p2p2/2Np1P1Q/4p1P1/1P6/P1P1BR1P/R6K b - - 0 1";
+std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+//std::string FEN = "5rk1/p4pbp/BpQ3p1/4p3/P7/2P1q1PP/1P2n1PB/3R3K w - - 1 0";
+std::string FEN = STARTPOS;
 
 int64_t nodes = 0;
+
+// |-----------|
+// | The board |---------------------------------------------------------------
+// |-----------|
 
 class UnmakeMoveGameState {
 public:
@@ -30,6 +36,8 @@ public:
     uint8_t castling_rights = 0;
     int halfmove_clock = 0; // Since a pawn was advanced or a capture was made (for the 50 move rule)
     int fullmove_number = 0;
+
+    u64 hash_key;
 
     // ------------
 
@@ -507,6 +515,90 @@ private:
 
 Board board;
 
+struct MoveList {
+    uint16_t list[256];
+    int count;
+};
+
+// |---------------------|
+// | Transposition Table |-----------------------------------------------------
+// |---------------------|
+
+void InitialiseHashKey(){
+    u64 key = 0ULL;
+    u64 bitboard;
+    int index;
+
+    for(int colour = 0; colour < 2; colour++){
+        for(int piece = 0; piece < 6; piece++){
+            bitboard = board.pieces[colour][piece];
+
+            while(bitboard){
+                index = GetLSBitIndex(bitboard);
+
+                key ^= piece_keys[colour][piece][index];
+
+                bitboard &= bitboard - 1;
+            }
+        }
+    }
+
+    if(board.en_passant_square != Square::NO_SQUARE){
+        key ^= EP_keys[board.en_passant_square];
+    }
+
+    key ^= castling_keys[board.castling_rights];
+
+    if(board.to_move == Colour::black){ key ^= side_key; }
+
+    board.hash_key = key;
+}
+
+class TEntry {
+    u64 hash_key = 0;
+    int depth = 0;
+    int age = 0;
+    int flag = 0;
+    int score = 0;
+    uint16_t move = 0;
+};
+
+class TranspositionTable{
+public:
+    void SetSize(u64 megabytes){
+        u64 total_bytes = megabytes * 1024 * 1024;
+        u64 total_entries = total_bytes / sizeof(TEntry);
+
+        // Must be a power of 2
+        int LSBitIndex;
+        while(total_entries){
+            LSBitIndex = GetLSBitIndex(total_entries);
+            total_entries &= total_entries - 1;
+        }
+
+        u64 total_entries_power_2 = 1 << LSBitIndex;
+        table.resize(total_entries_power_2);
+
+        hash_mask = total_entries_power_2 - 1;
+
+        std::cout << "Transposition table allocated " << megabytes << "MB with " << total_entries_power_2 << " entries\n";
+    }
+
+    TEntry& GetEntry(u64 hash_key){
+        return table[hash_key & hash_mask];
+    }
+private:
+    std::vector<TEntry> table;
+
+    u64 hash_mask;
+};
+
+TranspositionTable TT;
+
+// |-----------|
+// | Utilities |---------------------------------------------------------------
+// |-----------|
+
 void PrintBoardToTerminal(){
     std::cout << "\n-----------------------------------------------\n" << "to move: " << board.to_move << " | CR: " <<
     GetBitBinary(board.castling_rights, 0) << GetBitBinary(board.castling_rights, 1) << GetBitBinary(board.castling_rights, 2) << GetBitBinary(board.castling_rights, 3) <<
@@ -646,11 +738,6 @@ void ParseFEN(std::string FEN){
     board.fullmove_number = std::stoi(FEN.substr(pos, FEN_end_index - pos));
 }
 
-struct MoveList {
-    uint16_t list[256];
-    int count;
-};
-
 void PrintMoveToTerminal(uint16_t move){
     uint16_t mask;
     mask = (1ULL << 4) - 1;
@@ -708,6 +795,10 @@ void PrintMoveListToTerminal(MoveList list){
 uint16_t AssembleMove(int source, int target, int flag){
     return (source | (target << 6) | (flag << 12));
 }
+
+// |-----------------|
+// | Move Generation |---------------------------------------------------------
+// |-----------------|
 
 void GeneratePseudoLegalMoves(MoveList& list){
     int flag = 0;
@@ -1035,6 +1126,10 @@ void GeneratePseudoLegalMoves(MoveList& list){
         }
     }
 }
+
+// |---------|
+// | Testing |-----------------------------------------------------------------
+// |---------|
 
 void perft(int depth){
     if(depth == 0){

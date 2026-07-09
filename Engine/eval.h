@@ -4,6 +4,10 @@
 // Temporary measure
 uint16_t best_move;
 
+// |------------|
+// | Evaluation |--------------------------------------------------------------
+// |------------|
+
 class Evaluation {
 public:
     int Material(){
@@ -25,9 +29,7 @@ public:
     }
 
     int StaticEvaluation(){
-        int val = 0;
-
-        val += Material();
+        int val = Material();
 
         return val;
     }
@@ -37,14 +39,21 @@ private:
 
 Evaluation eval;
 
+// |---------------------------------|
+// | Engine Properties and Functions |-----------------------------------------
+// |---------------------------------|
+
 class Engine {
 public:
     int search_depth;
 
+    int transposition_table_size_MB;
+
     int Search(int depth, int alpha, int beta){
         if(depth == 0){
             nodes++;
-            return eval.StaticEvaluation();
+
+            return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
         }
 
         bool legal_moves = false;
@@ -57,11 +66,12 @@ public:
             board.UnmakeMove(list.list[i], board.to_move, IrrInfo);
             // VVV best_move is a temporary measure
             if(evaluation > alpha && depth == search_depth){ best_move = list.list[i]; }
+            // ^^^ temporary measure
             alpha = std::max(alpha, evaluation);
             if(alpha >= beta){ return alpha; }
         }
 
-        if(!legal_moves){ return (board.InCheck(board.to_move) ? -CHECKMATE - depth :  STALEMATE); }
+        if(!legal_moves){ return (board.InCheck(board.to_move) ? -CHECKMATE + depth :  STALEMATE); }
 
         return alpha;
     }
