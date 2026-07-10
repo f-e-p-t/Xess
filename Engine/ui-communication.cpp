@@ -36,10 +36,17 @@ int main(){
 
     //perft(6); std::cout << nodes << "\n";
 
-    
-    std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
-    std::cout << "\n" << nodes << "\n";
-    PrintMoveToTerminal(best_move);
+    //MoveList list; GeneratePseudoLegalMoves(list);
+    //PrintMoveListToTerminal(list); std::cout << "\n";
+    //std::cout << board.hash_key << "\n";
+    //UnmakeMoveGameState x = board.MakeMove(list.list[10], board.to_move);
+    //std::cout << board.hash_key << "\n";
+    //board.UnmakeMove(list.list[10], board.to_move, x);
+    //std::cout << board.hash_key << "\n";
+
+    //std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
+    //std::cout << "\n" << nodes << "\n";
+    //PrintMoveToTerminal(best_move);
 
     // ---
 

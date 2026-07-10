@@ -3,8 +3,8 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-//std::string FEN = "5rk1/p4pbp/BpQ3p1/4p3/P7/2P1q1PP/1P2n1PB/3R3K w - - 1 0";
-std::string FEN = STARTPOS;
+std::string FEN = "r3k2r/pppppp1p/2nb1n2/5Pp1/8/B1N2N2/PPPPP1PP/R3K2R w KQkq g6 0 1";
+//std::string FEN = STARTPOS;
 
 int64_t nodes = 0;
 
@@ -86,10 +86,6 @@ public:
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
 
-        // updating the hashkey:
-        // To do:
-        // 3, 4, 5, 8, 9, 10, 11, 12, 13, 14, 15
-
         UnmakeMoveGameState state = UnmakeMoveGameState(en_passant_square, castling_rights, halfmove_clock, fullmove_number, hash_key);
 
         u64 source_place = 1ULL << source;
@@ -98,10 +94,13 @@ public:
         Piece source_piece = PieceAtSquare(source, side);
         Piece target_piece = Piece::NO_PIECE;
 
-        // EP square exists - it will be removed this move - must hash it out of the hash key before it is lost
+        // EP square exists - it will be removed next - must hash it out of the hash key before it is lost
         if(en_passant_square != Square::NO_SQUARE){ hash_key ^= EP_keys[en_passant_square]; }
 
         en_passant_square = Square::NO_SQUARE;
+
+        // Similarly, hash out the old CR before they are lost.
+        hash_key ^= castling_keys[castling_rights];
 
         castling_rights &= castling_rights_mask_table[source];
         castling_rights &= castling_rights_mask_table[target];
@@ -148,11 +147,17 @@ public:
                     pieces[side][Piece::rook] ^= CASTLE_WHITE_KS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_WHITE_KS_OCC_XOR;
                     total_occ ^= CASTLE_WHITE_KS_OCC_XOR;
+
+                    hash_key ^= piece_keys[side][Piece::king][Square::e1]; hash_key ^= piece_keys[side][Piece::king][Square::g1];
+                    hash_key ^= piece_keys[side][Piece::rook][Square::h1]; hash_key ^= piece_keys[side][Piece::rook][Square::f1];
                 } else{
                     pieces[side][Piece::king] ^= CASTLE_BLACK_KS_KING_XOR;
                     pieces[side][Piece::rook] ^= CASTLE_BLACK_KS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_BLACK_KS_OCC_XOR;
                     total_occ ^= CASTLE_BLACK_KS_OCC_XOR;
+
+                    hash_key ^= piece_keys[side][Piece::king][Square::e8]; hash_key ^= piece_keys[side][Piece::king][Square::g8];
+                    hash_key ^= piece_keys[side][Piece::rook][Square::h8]; hash_key ^= piece_keys[side][Piece::rook][Square::f8];
                 }
 
                 break;
@@ -165,11 +170,17 @@ public:
                     pieces[side][Piece::rook] ^= CASTLE_WHITE_QS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_WHITE_QS_OCC_XOR;
                     total_occ ^= CASTLE_WHITE_QS_OCC_XOR;
+
+                    hash_key ^= piece_keys[side][Piece::king][Square::e1]; hash_key ^= piece_keys[side][Piece::king][Square::c1];
+                    hash_key ^= piece_keys[side][Piece::rook][Square::a1]; hash_key ^= piece_keys[side][Piece::rook][Square::d1];
                 } else{
                     pieces[side][Piece::king] ^= CASTLE_BLACK_QS_KING_XOR;
                     pieces[side][Piece::rook] ^= CASTLE_BLACK_QS_ROOK_XOR;
                     colour_occ[side] ^= CASTLE_BLACK_QS_OCC_XOR;
                     total_occ ^= CASTLE_BLACK_QS_OCC_XOR;
+
+                    hash_key ^= piece_keys[side][Piece::king][Square::e8]; hash_key ^= piece_keys[side][Piece::king][Square::c8];
+                    hash_key ^= piece_keys[side][Piece::rook][Square::a8]; hash_key ^= piece_keys[side][Piece::rook][Square::d8];
                 }
 
                 break;
@@ -187,6 +198,9 @@ public:
 
                 halfmove_clock = 0;
 
+                hash_key ^= piece_keys[side][source_piece][source]; hash_key ^= piece_keys[side][source_piece][target];
+                hash_key ^= piece_keys[!side][target_piece][target];
+
                 break;
             }
 
@@ -198,9 +212,14 @@ public:
                 total_occ ^= both_places;
                 if(side == Colour::white){
                     pieces[!side][Piece::pawn] ^= (target_place << 8); colour_occ[!side] ^= (target_place << 8); total_occ ^= (target_place << 8);
+                    hash_key ^= piece_keys[!side][Piece::pawn][target + 8];
                 } else{
                     pieces[!side][Piece::pawn] ^= (target_place >> 8); colour_occ[!side] ^= (target_place >> 8); total_occ ^= (target_place >> 8);
+                    hash_key ^= piece_keys[!side][Piece::pawn][target - 8];
                 }
+
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::pawn][target];
 
                 break;
             }
@@ -213,6 +232,9 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::knight][target];
+
                 break;
             }
 
@@ -224,6 +246,9 @@ public:
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
 
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::bishop][target];
+
                 break;
             }
 
@@ -234,6 +259,9 @@ public:
                 pieces[side][Piece::rook] ^= target_place;
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
+                
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::rook][target];
 
                 break;
             }
@@ -245,6 +273,9 @@ public:
                 pieces[side][Piece::queen] ^= target_place;
                 colour_occ[side] ^= both_places;
                 total_occ ^= both_places;
+
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::queen][target];
 
                 break;
             }
@@ -260,6 +291,10 @@ public:
                 colour_occ[!side] ^= target_place;
                 total_occ ^= source_place;
 
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::knight][target];
+                hash_key ^= piece_keys[!side][target_piece][target];
+
                 break;
             }
 
@@ -273,6 +308,10 @@ public:
                 pieces[!side][target_piece] ^= target_place;
                 colour_occ[!side] ^= target_place;
                 total_occ ^= source_place;
+
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::bishop][target];
+                hash_key ^= piece_keys[!side][target_piece][target];
 
                 break;
             }
@@ -288,6 +327,10 @@ public:
                 colour_occ[!side] ^= target_place;
                 total_occ ^= source_place;
 
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::rook][target];
+                hash_key ^= piece_keys[!side][target_piece][target];
+
                 break;
             }
 
@@ -301,6 +344,10 @@ public:
                 pieces[!side][target_piece] ^= target_place;
                 colour_occ[!side] ^= target_place;
                 total_occ ^= source_place;
+
+                hash_key ^= piece_keys[side][Piece::pawn][source];
+                hash_key ^= piece_keys[side][Piece::queen][target];
+                hash_key ^= piece_keys[!side][target_piece][target];
 
                 break;
             }
