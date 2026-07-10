@@ -44,9 +44,9 @@ int main(){
     //board.UnmakeMove(list.list[10], board.to_move, x);
     //std::cout << board.hash_key << "\n";
 
-    //std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
-    //std::cout << "\n" << nodes << "\n";
-    //PrintMoveToTerminal(best_move);
+    std::cout << engine.Search(engine.search_depth, -INFTY, INFTY) << "\n";
+    std::cout << "\n" << nodes << "\n";
+    PrintMoveToTerminal(best_move_temp);
 
     // ---
 

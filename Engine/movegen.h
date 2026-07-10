@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "r3k2r/pppppp1p/2nb1n2/5Pp1/8/B1N2N2/PPPPP1PP/R3K2R w KQkq g6 0 1";
+std::string FEN = "2r4k/5p2/R3bN1p/8/5R2/8/1r4PP/6K1 b - - 0 1";
 //std::string FEN = STARTPOS;
 
 int64_t nodes = 0;
@@ -622,12 +622,13 @@ void InitialiseHashKey(){
 }
 
 class TEntry {
+public:
     u64 hash_key = 0;
     int depth = 0;
     int age = 0;
-    int flag = 0;
+    uint8_t flag = 0;
     int score = 0;
-    uint16_t move = 0;
+    uint16_t best_move = 0;
 };
 
 class TranspositionTable{
@@ -653,6 +654,16 @@ public:
 
     TEntry& GetEntry(u64 hash_key){
         return table[hash_key & hash_mask];
+    }
+
+    void SetEntry(TEntry entry, u64 hash_key){
+        table[hash_key & hash_mask] = entry;
+    }
+
+    bool AppropriateToOverwrite(TEntry& stored, TEntry& candidate){
+        // If the candidate is evaluated deeper, or if it is from a newer Search call
+        if(candidate.depth >= stored.depth || candidate.age != stored.age){ return true; }
+        return false;
     }
 private:
     std::vector<TEntry> table;

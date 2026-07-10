@@ -40,6 +40,7 @@ enum MoveFlag {
     quiet_move, double_pawn_push, KS_castle, QS_castle, normal_capture, EP_capture, six, seven, quiet_knight_promo, quiet_bishop_promo, quiet_rook_promo, quiet_queen_promo,
     capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
 };
+enum TEntryFlag { exact, UB, LB };
 
 // |--------------|
 // | Zobrist Keys |------------------------------------------------------------
