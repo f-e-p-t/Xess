@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "r1bq1rk1/pppp1ppp/3b1n2/1B2n3/4P3/1N3N2/PPP2PPP/R1BQ1RK1 w - - 1 0";
+std::string FEN = "2n1r1k1/1q3rp1/2b1pnNp/1pp1p3/5P1Q/1P2N1PP/2P3B1/4RRK1 w - - 1 0";
 //std::string FEN = STARTPOS;
 
 int64_t nodes = 0;
@@ -584,6 +584,7 @@ Board board;
 
 struct MoveList {
     uint16_t list[256];
+    int score_list[256];
     int count;
 };
 

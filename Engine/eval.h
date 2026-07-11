@@ -39,6 +39,58 @@ private:
 
 Evaluation eval;
 
+// |---------------|
+// | Move Ordering |-----------------------------------------------------------
+// |---------------|
+
+// [attacker][victim] ~ [source][target]
+int mvv_lva[6][6] = {
+    {105, 325, 335, 505, 905, 0}, // By pawn
+    {104, 324, 334, 504, 904, 0}, // By knight
+    {103, 323, 333, 503, 903, 0}, // By bishop
+    {102, 322, 332, 502, 902, 0}, // By rook
+    {101, 321, 332, 501, 901, 0}, // By queen
+    {100, 320, 300, 500, 900, 0} // By king
+};
+
+int ScoreMove(uint16_t move){
+    int source = (move >> 6) & ((1ULL << 6) - 1);
+    int target = move & ((1ULL << 6) - 1);
+    int flag = (move >> 12) & ((1ULL << 4) - 1);
+
+    int score = 0;
+
+    // Captures (MVV-LVA)
+    if(flag == 4 || flag >= 12){
+        Piece source_piece = board.PieceAtSquare(source, board.to_move);
+        Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
+
+        score += mvv_lva[source_piece][target_piece];
+    }
+
+    return score;
+}
+
+void ScoreMoveList(MoveList& list, uint16_t best_move){
+    for(int i = 0; i < list.count; i++){
+        list.score_list[i] = ScoreMove(list.list[i]);
+
+        // A huge bonus for the best move (taken from the TT)
+        if(list.list[i] == best_move){ list.score_list[i] += 10000; }
+    }
+}
+
+void PrepareBestMove(MoveList& list, int index){
+    int best_index = index;
+    
+    for(int i = index + 1; i < list.count; i++){
+        if(list.score_list[i] > list.score_list[best_index]){ best_index = i; }
+    }
+
+    std::swap(list.list[index], list.list[best_index]);
+    std::swap(list.score_list[index], list.score_list[best_index]);
+}
+
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
@@ -69,10 +121,9 @@ public:
 
         // Leaf node - return the position's evaluation
         if(depth == 0){
-            // Eventually implement quiescence, and put data into the TTable here with a special depth -1 to signal 
-            // that the position was evaluated by the quiescence search
             //return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
-            return (board.to_move == Colour::white ? Quiescence(alpha, beta, ply) : -Quiescence(alpha, beta, ply));
+            //return (board.to_move == Colour::white ? Quiescence(alpha, beta, ply) : -Quiescence(alpha, beta, ply));
+            return Quiescence(alpha, beta, ply);
         }
 
         int score = 0;
@@ -81,8 +132,9 @@ public:
         TEntry entry;
         bool legal_moves = false;
 
-        MoveList list; GeneratePseudoLegalMoves(list);
+        MoveList list; GeneratePseudoLegalMoves(list); ScoreMoveList(list, info.best_move);
         for(int i = 0; i < list.count; i++){
+            PrepareBestMove(list, i);
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
@@ -130,7 +182,7 @@ public:
 
     int Quiescence(int alpha, int beta, int ply){
         nodes++;
-        int static_eval = eval.StaticEvaluation();
+        int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         int best_score = static_eval;
         if(best_score >= beta){ return best_score; }

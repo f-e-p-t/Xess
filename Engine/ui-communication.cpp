@@ -27,7 +27,7 @@ int main(){
 
     // ---
 
-    engine.search_depth = 7;
+    engine.search_depth = 8;
     engine.transposition_table_size_MB = 1024;
 
     ParseFEN(FEN);
@@ -35,6 +35,13 @@ int main(){
     PrintBoardToTerminal();
 
     //perft(6); std::cout << nodes << "\n";
+
+    //MoveList list; GeneratePseudoLegalMoves(list);
+    //PrintMoveListToTerminal(list);
+    //ScoreMoveList(list, (uint16_t)0);
+    //PrepareBestMove(list, 0);
+    //std::cout << "\n\n";
+    //PrintMoveListToTerminal(list);
 
     std::cout << engine.Search(engine.search_depth, -INFTY, INFTY, 0) << "\n";
     std::cout << "\n" << nodes << "\n";
