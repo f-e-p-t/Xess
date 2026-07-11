@@ -20,6 +20,7 @@ const int QUEEN_VALUE_CTP = 900;
 
 const int INFTY = 1000000000;
 const int CHECKMATE = 1000000;
+const int CHECKMATE_THRESHOLD = 900000;
 const int STALEMATE = 0;
 
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
