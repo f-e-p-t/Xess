@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "1n4k1/2P3pp/8/N4pP1/2q4P/8/8/2R3K1 w - f6 0 1";
+std::string FEN = "r1bq1rk1/pppp1ppp/3b1n2/1B2n3/4P3/1N3N2/PPP2PPP/R1BQ1RK1 w - - 1 0";
 //std::string FEN = STARTPOS;
 
 int64_t nodes = 0;
@@ -1205,12 +1205,12 @@ void GeneratePseudoLegalMoves(MoveList& list){
     }
 }
 
-void FilterCaptures(MoveList& list){
+void FilterCapturesAndPromotions(MoveList& list){
     int flag = 0;
     int write = 0;
     for(int read = 0; read < list.count; read++){
         flag = (list.list[read] >> 12) & ((1ULL << 4) - 1);
-        if(flag == 4 || flag == 5 || flag >= 12){
+        if(flag >= 4){
             list.list[write++] = list.list[read];
         }
     }

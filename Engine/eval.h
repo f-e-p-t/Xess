@@ -69,11 +69,10 @@ public:
 
         // Leaf node - return the position's evaluation
         if(depth == 0){
-            nodes++;
             // Eventually implement quiescence, and put data into the TTable here with a special depth -1 to signal 
             // that the position was evaluated by the quiescence search
             //return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
-            return Quiescence();
+            return (board.to_move == Colour::white ? Quiescence(alpha, beta, ply) : -Quiescence(alpha, beta, ply));
         }
 
         int score = 0;
@@ -130,7 +129,26 @@ public:
     }
 
     int Quiescence(int alpha, int beta, int ply){
-        int score = eval.StaticEvaluation();
+        nodes++;
+        int static_eval = eval.StaticEvaluation();
+
+        int best_score = static_eval;
+        if(best_score >= beta){ return best_score; }
+        if(best_score > alpha){ alpha = best_score; }
+
+        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list);
+        for(int i = 0; i < list.count; i++){
+            UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
+            if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
+            int score = -Quiescence(-beta, -alpha, ply + 1);
+            board.UnmakeMove(list.list[i], board.to_move, irr_info);
+
+            if(score >= beta){ return score; }
+            if(score > best_score){ best_score = score; }
+            if(score > alpha){ alpha = score; }
+        }
+
+        return best_score;
     }
 private:
     int search_age = 0;
