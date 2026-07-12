@@ -18,7 +18,8 @@ const int BISHOP_VALUE_CTP = 330;
 const int ROOK_VALUE_CTP = 500;
 const int QUEEN_VALUE_CTP = 900;
 
-const int DELTA = 200;
+// This can shrink when there is a stronger evaluation
+const int DELTA = 300;
 
 const int INFTY = 1000000000;
 const int CHECKMATE = 1000000;

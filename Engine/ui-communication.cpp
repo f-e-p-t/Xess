@@ -27,7 +27,7 @@ int main(){
 
     // ---
 
-    engine.search_depth = 10;
+    engine.search_depth = 16;
     engine.transposition_table_size_MB = 512;
 
     ParseFEN(FEN);
@@ -45,7 +45,7 @@ int main(){
 
     //std::cout << engine.Search(engine.search_depth, -INFTY, INFTY, 0) << "\n";
     
-    std::cout << engine.IterateSearch(engine.search_depth) << "\n";
+    std::cout << engine.IterativeSearch(engine.search_depth) << "\n";
     std::cout << "\n" << nodes << "\n";
     PrintMoveToTerminal(best_move_temp);
 

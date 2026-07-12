@@ -201,8 +201,15 @@ public:
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
 
-            // If the move is not a pawn promotion, apply delta pruning
-            // ...
+            //If the move is not a pawn promotion, apply delta pruning
+            // THIS EXAMPLE CODE IS SLOW. IMPROVE IT
+            if( ((list.list[i] & 0b1111000000000000) >> 12) < 8 ){
+                int target_square = (list.list[i] & 0b0000111111000000) >> 6;
+                Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
+                int target_value = PieceValue(target_piece);
+
+                if(static_eval + target_value + DELTA < alpha){ continue; }
+            }
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
@@ -217,7 +224,7 @@ public:
         return best_score;
     }
 
-    int IterateSearch(int depth){
+    int IterativeSearch(int depth){
         for(int d = 1; d < depth; d++){
             Search(d, -INFTY, INFTY, 0);
             search_age++;
