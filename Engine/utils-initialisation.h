@@ -18,6 +18,8 @@ const int BISHOP_VALUE_CTP = 330;
 const int ROOK_VALUE_CTP = 500;
 const int QUEEN_VALUE_CTP = 900;
 
+const int DELTA = 200;
+
 const int INFTY = 1000000000;
 const int CHECKMATE = 1000000;
 const int CHECKMATE_THRESHOLD = 900000;
@@ -42,6 +44,17 @@ enum MoveFlag {
     capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
 };
 enum TEntryFlag { exact, UB, LB };
+
+int PieceValue(Piece piece){
+    switch(piece){
+        case Piece::pawn: { return PAWN_VALUE_CTP; }
+        case Piece::knight: { return KNIGHT_VALUE_CTP; }
+        case Piece::bishop: { return BISHOP_VALUE_CTP; }
+        case Piece::rook: { return ROOK_VALUE_CTP; }
+        case Piece::queen: { return QUEEN_VALUE_CTP; }
+        default: { return 0; }
+    }
+}
 
 // |--------------|
 // | Zobrist Keys |------------------------------------------------------------

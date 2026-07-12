@@ -54,9 +54,9 @@ int mvv_lva[6][6] = {
 };
 
 int ScoreMove(uint16_t move){
-    int source = (move >> 6) & ((1ULL << 6) - 1);
-    int target = move & ((1ULL << 6) - 1);
-    int flag = (move >> 12) & ((1ULL << 4) - 1);
+    int source = move & 0b0000000000111111;
+    int target = (move & 0b0000111111000000) >> 6;
+    int flag = (move & 0b1111000000000000) >> 12;
 
     int score = 0;
 
@@ -77,6 +77,12 @@ void ScoreMoveList(MoveList& list, uint16_t best_move){
 
         // A huge bonus for the best move (taken from the TT)
         if(list.list[i] == best_move){ list.score_list[i] += 10000; }
+    }
+}
+
+void ScoreQuiescenceMoveList(MoveList& list){
+    for(int i = 0; i < list.count; i++){
+        list.score_list[i] = ScoreMove(list.list[i]);
     }
 }
 
@@ -119,10 +125,9 @@ public:
             if(alpha >= beta){ return stored_score; }
         }
 
-        // Leaf node - return the position's evaluation
+        // Leaf node - hand over to Quiescence
         if(depth == 0){
             //return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
-            //return (board.to_move == Colour::white ? Quiescence(alpha, beta, ply) : -Quiescence(alpha, beta, ply));
             return Quiescence(alpha, beta, ply);
         }
 
@@ -134,7 +139,10 @@ public:
 
         MoveList list; GeneratePseudoLegalMoves(list); ScoreMoveList(list, info.best_move);
         for(int i = 0; i < list.count; i++){
+            
+            // Ongoing move ordering
             PrepareBestMove(list, i);
+
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
@@ -142,7 +150,7 @@ public:
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
             // Found a better move - raise best_score
-            if(score > best_score){ 
+            if(score > best_score){
                 best_score = score;
                 best_move = list.list[i];
 
@@ -181,6 +189,7 @@ public:
     }
 
     int Quiescence(int alpha, int beta, int ply){
+        //std::cout << ply << " ";
         nodes++;
         int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
@@ -188,8 +197,13 @@ public:
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
 
-        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list);
+        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list);
         for(int i = 0; i < list.count; i++){
+            PrepareBestMove(list, i);
+
+            // If the move is not a pawn promotion, apply delta pruning
+            // ...
+
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             int score = -Quiescence(-beta, -alpha, ply + 1);
@@ -201,6 +215,18 @@ public:
         }
 
         return best_score;
+    }
+
+    int IterateSearch(int depth){
+        for(int d = 1; d < depth; d++){
+            Search(d, -INFTY, INFTY, 0);
+            search_age++;
+        }
+        
+        int score = Search(depth, -INFTY, INFTY, 0);
+        search_age++;
+
+        return score;
     }
 private:
     int search_age = 0;
