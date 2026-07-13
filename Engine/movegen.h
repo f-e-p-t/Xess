@@ -3,10 +3,8 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "2r4k/5p2/R3bN1p/8/5R2/8/1r4PP/6K1 b - - 0 1";
+std::string FEN = "r1b2rk1/1p3p1p/p4B2/4p2p/8/PPP2P2/7P/2KR1B2 w - - 1 0";
 //std::string FEN = STARTPOS;
-
-int64_t nodes = 0;
 
 // |-----------|
 // | The board |---------------------------------------------------------------
@@ -827,8 +825,6 @@ void PrintMoveToTerminal(uint16_t move){
 
     mask = (1ULL << 6) - 1;
     std::cout << "from " << IToSq(((move >> 0) & mask));
-    
-    std::cout << "\n";
 }
 
 void PrintMoveListToTerminal(MoveList list){
@@ -1223,6 +1219,7 @@ void FilterCapturesAndPromotions(MoveList& list){
 // | Testing |-----------------------------------------------------------------
 // |---------|
 
+u64 nodes = 0;
 void perft(int depth){
     if(depth == 0){
         nodes++; return;

@@ -45,9 +45,9 @@ int main(){
 
     //std::cout << engine.Search(engine.search_depth, -INFTY, INFTY, 0) << "\n";
     
-    std::cout << engine.IterativeSearch(engine.search_depth) << "\n";
-    std::cout << "\n" << nodes << "\n";
-    engine.PrintPVLine();
+    engine.IterativeSearch(engine.search_depth);
+    std::cout << "\nNodes searched: " << nodes_searched << "\n";
+    engine.PrintPV();
 
     // ---
 

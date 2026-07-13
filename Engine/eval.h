@@ -1,9 +1,6 @@
 #include "movegen.h"
 #include <iostream>
 
-// Temporary measure
-uint16_t best_move_temp;
-
 // |------------|
 // | Evaluation |--------------------------------------------------------------
 // |------------|
@@ -97,9 +94,9 @@ void PrepareBestMove(MoveList& list, int index){
     std::swap(list.score_list[index], list.score_list[best_index]);
 }
 
-// |---------------------|
-// | Triangular PV Table |-----------------------------------------------------
-// |---------------------|
+// |----|
+// | PV |-----------------------------------------------------
+// |----|
 
 uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
 int PV_length[MAX_PLY] = {0};
@@ -107,6 +104,8 @@ int PV_length[MAX_PLY] = {0};
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
+
+u64 nodes_searched = 0;
 
 class Engine {
 public:
@@ -116,6 +115,7 @@ public:
 
     int Search(int depth, int alpha, int beta, int ply){
         const int original_alpha = alpha;
+        bool found_PV = false;
 
         // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
@@ -134,7 +134,7 @@ public:
 
         // Leaf node - hand over to Quiescence
         if(depth == 0){
-            //return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
+            nodes_searched++;
             PV_length[ply] = ply;
             return Quiescence(alpha, beta, ply);
         }
@@ -154,7 +154,18 @@ public:
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
-            score = -Search(depth - 1, -beta, -alpha, ply + 1);
+
+            // (PVS) If found a PV move, tighten the window to 1 CTP
+            if(found_PV){
+                score = -Search(depth - 1, -alpha - 1, -alpha, ply + 1);
+
+                // If it fails, proceed as usual
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
+            }
+
+            // Otherwise, proceed as usual
+            else{ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
+
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
             // Better move - update the trackers
@@ -163,13 +174,11 @@ public:
             // Beta cutoff (fail-high)
             if(best_score >= beta){ break; }
 
-            // No beta cutoff - raise alpha and fill PV table
-            if(score > alpha){ alpha = score;
+            // No beta cutoff - raise alpha, toggle found_PV and fill PV table
+            if(score > alpha){ alpha = score; found_PV = true;
             
                 PV_table[ply][ply] = list.list[i];
-                for(int i = ply + 1; i < PV_length[ply + 1]; i++){
-                    PV_table[ply][i] = PV_table[ply + 1][i];
-                }
+                for(int i = ply + 1; i < PV_length[ply + 1]; i++){ PV_table[ply][i] = PV_table[ply + 1][i]; }
                 PV_length[ply] = PV_length[ply + 1];
             }
         }
@@ -196,8 +205,6 @@ public:
     }
 
     int Quiescence(int alpha, int beta, int ply){
-        //std::cout << ply << " ";
-        nodes++;
         int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         int best_score = static_eval;
@@ -206,6 +213,7 @@ public:
 
         MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list);
         for(int i = 0; i < list.count; i++){
+            nodes_searched++;
             PrepareBestMove(list, i);
 
             // If the move is not a pawn promotion, apply delta pruning
@@ -214,12 +222,8 @@ public:
                 Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
                 int target_value = PieceValue(target_piece);
                 
-                if(static_eval + target_value + DELTA < alpha){ nodes++; continue; }
+                if(static_eval + target_value + DELTA < alpha){ continue; }
             }
-
-            //((list.list[i] & 0b1111000000000000) >> 12) < 8;
-            //int target_square = (list.list[i] & 0b0000111111000000) >> 6;
-            //Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
@@ -234,21 +238,26 @@ public:
         return best_score;
     }
 
-    int IterativeSearch(int depth){
+    void IterativeSearch(int depth){
         for(int d = 1; d < depth; d++){
-            Search(d, -INFTY, INFTY, 0);
+            int s = Search(d, -INFTY, INFTY, 0);
+            std::cout << "Iteration " << d << ": " << s << " | ";
             search_age++;
         }
         
+        std::cout << "\n";
         int score = Search(depth, -INFTY, INFTY, 0);
-        search_age++;
+        std::cout << "Iteration " << depth << " gives " << score << "\n";
 
-        return score;
+        search_age++;
     }
 
-    void PrintPVLine(){
+    void PrintPV(){
+        std::cout << "\nPrincipal Variation:\n";
         for(int i = 0; i < PV_length[0]; i++){
+            std::cout << "ply " << i << ": (";
             PrintMoveToTerminal(PV_table[0][i]);
+            std::cout << ")\n";
         }
     }
 private:
