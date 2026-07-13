@@ -102,7 +102,7 @@ void PrepareBestMove(MoveList& list, int index){
 // |---------------------|
 
 uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
-int pv_length[MAX_PLY] = {0};
+int PV_length[MAX_PLY] = {0};
 
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
@@ -135,6 +135,7 @@ public:
         // Leaf node - hand over to Quiescence
         if(depth == 0){
             //return (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
+            PV_length[ply] = ply;
             return Quiescence(alpha, beta, ply);
         }
 
@@ -157,22 +158,24 @@ public:
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
             // Better move - update the trackers
-            if(score > best_score){ best_score = score; best_move = list.list[i]; 
-                // VVV TEMPORARY MEASURE
-                if(depth == search_depth){ best_move_temp = list.list[i]; }
-            }
+            if(score > best_score){ best_score = score; best_move = list.list[i]; }
 
             // Beta cutoff (fail-high)
-            if(best_score >= beta){
-                break;
-            }
+            if(best_score >= beta){ break; }
 
-            // No beta cutoff - raise alpha
-            if(score > alpha){ alpha = score; }
+            // No beta cutoff - raise alpha and fill PV table
+            if(score > alpha){ alpha = score;
+            
+                PV_table[ply][ply] = list.list[i];
+                for(int i = ply + 1; i < PV_length[ply + 1]; i++){
+                    PV_table[ply][i] = PV_table[ply + 1][i];
+                }
+                PV_length[ply] = PV_length[ply + 1];
+            }
         }
 
         // Checkmate and stalemate
-        if(!legal_moves){ best_score = (board.InCheck(board.to_move) ? -CHECKMATE + ply : STALEMATE); }
+        if(!legal_moves){ PV_length[ply] = ply; best_score = (board.InCheck(board.to_move) ? -CHECKMATE + ply : STALEMATE); }
 
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
@@ -223,8 +226,8 @@ public:
             int score = -Quiescence(-beta, -alpha, ply + 1);
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
-            if(score >= beta){ return score; }
             if(score > best_score){ best_score = score; }
+            if(score >= beta){ return score; }
             if(score > alpha){ alpha = score; }
         }
 
@@ -241,6 +244,12 @@ public:
         search_age++;
 
         return score;
+    }
+
+    void PrintPVLine(){
+        for(int i = 0; i < PV_length[0]; i++){
+            PrintMoveToTerminal(PV_table[0][i]);
+        }
     }
 private:
     int search_age = 0;

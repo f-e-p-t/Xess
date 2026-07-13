@@ -47,7 +47,7 @@ int main(){
     
     std::cout << engine.IterativeSearch(engine.search_depth) << "\n";
     std::cout << "\n" << nodes << "\n";
-    PrintMoveToTerminal(best_move_temp);
+    engine.PrintPVLine();
 
     // ---
 
