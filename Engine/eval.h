@@ -119,7 +119,8 @@ public:
 
         // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
-        if(info.hash_key == board.hash_key && info.depth >= depth){
+        bool TT_match = (info.hash_key == board.hash_key);
+        if(TT_match && info.depth >= depth){
             int stored_score = info.score;
             
             // Denormalise depth to mate
@@ -145,7 +146,12 @@ public:
         TEntry entry;
         bool legal_moves = false;
 
-        MoveList list; GeneratePseudoLegalMoves(list); ScoreMoveList(list, info.best_move);
+        MoveList list; GeneratePseudoLegalMoves(list);
+
+        // Move ordering - if no TT match, pass in the PV move even if not on PV line - it may be good in other positions
+        if(TT_match){ ScoreMoveList(list, info.best_move); }
+        else{ ScoreMoveList(list, PV_table[0][ply]); }
+        
         for(int i = 0; i < list.count; i++){
             
             // Ongoing move ordering

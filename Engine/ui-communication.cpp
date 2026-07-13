@@ -49,6 +49,8 @@ int main(){
     std::cout << "\nNodes searched: " << nodes_searched << "\n";
     engine.PrintPV();
 
+    // when creating gp loop, remember to clear things, like nodecount and PV
+
     // ---
 
     server.run();
