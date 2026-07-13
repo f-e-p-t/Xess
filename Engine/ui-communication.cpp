@@ -27,7 +27,7 @@ int main(){
 
     // ---
 
-    engine.search_depth = 16;
+    engine.search_depth = 10;
     engine.transposition_table_size_MB = 512;
 
     ParseFEN(FEN);

@@ -97,6 +97,13 @@ void PrepareBestMove(MoveList& list, int index){
     std::swap(list.score_list[index], list.score_list[best_index]);
 }
 
+// |---------------------|
+// | Triangular PV Table |-----------------------------------------------------
+// |---------------------|
+
+uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
+int pv_length[MAX_PLY] = {0};
+
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
@@ -149,22 +156,19 @@ public:
             score = -Search(depth - 1, -beta, -alpha, ply + 1);
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
-            // Found a better move - raise best_score
-            if(score > best_score){
-                best_score = score;
-                best_move = list.list[i];
-
+            // Better move - update the trackers
+            if(score > best_score){ best_score = score; best_move = list.list[i]; 
                 // VVV TEMPORARY MEASURE
                 if(depth == search_depth){ best_move_temp = list.list[i]; }
-
-                // Only set best_move if score beats alpha
-                if(score > alpha){ alpha = score; }
             }
 
-            // Beta cutoff
+            // Beta cutoff (fail-high)
             if(best_score >= beta){
                 break;
             }
+
+            // No beta cutoff - raise alpha
+            if(score > alpha){ alpha = score; }
         }
 
         // Checkmate and stalemate
@@ -201,15 +205,18 @@ public:
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
 
-            //If the move is not a pawn promotion, apply delta pruning
-            // THIS EXAMPLE CODE IS SLOW. IMPROVE IT
+            // If the move is not a pawn promotion, apply delta pruning
             if( ((list.list[i] & 0b1111000000000000) >> 12) < 8 ){
                 int target_square = (list.list[i] & 0b0000111111000000) >> 6;
                 Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
                 int target_value = PieceValue(target_piece);
-
-                if(static_eval + target_value + DELTA < alpha){ continue; }
+                
+                if(static_eval + target_value + DELTA < alpha){ nodes++; continue; }
             }
+
+            //((list.list[i] & 0b1111000000000000) >> 12) < 8;
+            //int target_square = (list.list[i] & 0b0000111111000000) >> 6;
+            //Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }

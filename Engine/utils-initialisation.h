@@ -21,6 +21,9 @@ const int QUEEN_VALUE_CTP = 900;
 // This can shrink when there is a stronger evaluation
 const int DELTA = 300;
 
+// For the triangular PV table
+const int MAX_PLY = 64;
+
 const int INFTY = 1000000000;
 const int CHECKMATE = 1000000;
 const int CHECKMATE_THRESHOLD = 900000;
