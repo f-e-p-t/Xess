@@ -1,0 +1,29 @@
+*{
+  margin: 0px;
+}
+
+.board{
+  width: fit-content;
+  margin: 20px;
+  border-style: solid;
+  border-width: 10px;
+  border-color: black;
+  border-radius: 10px;
+}
+
+.board-row{
+  display: flex;
+}
+
+.board-square{
+  min-width: 75px;
+  min-height: 75px;
+}
+
+.board-square-white{
+  background-color: rgb(225, 225, 225);
+}
+
+.board-square-black{
+  background-color: rgb(0, 158, 137);
+}
