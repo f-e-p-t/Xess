@@ -101,6 +101,8 @@ void PrepareBestMove(MoveList& list, int index){
 uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
 int PV_length[MAX_PLY] = {0};
 
+bool following_PV = true;
+
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
@@ -113,7 +115,7 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, int alpha, int beta, int ply){
+    int Search(int depth, int alpha, int beta, int ply, bool following_PV){
         const int original_alpha = alpha;
         bool found_PV = false;
 
@@ -148,10 +150,12 @@ public:
 
         MoveList list; GeneratePseudoLegalMoves(list);
 
-        // Move ordering - if no TT match, pass in the PV move even if not on PV line - it may be good in other positions
-        if(TT_match){ ScoreMoveList(list, info.best_move); }
-        else{ ScoreMoveList(list, PV_table[0][ply]); }
-        
+        // Move ordering. Priorities: PV --> TT --> MVV-LVA
+        if(following_PV){ ScoreMoveList(list, PV_table[0][ply]); }
+        // If using best move from TT, ignore UB since no move raised alpha
+        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move); }
+        else{ ScoreMoveList(list, 0); }
+
         for(int i = 0; i < list.count; i++){
             
             // Ongoing move ordering
@@ -161,16 +165,19 @@ public:
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
 
-            // (PVS) If found a PV move, tighten the window to 1 CTP
-            if(found_PV){
-                score = -Search(depth - 1, -alpha - 1, -alpha, ply + 1);
+            // Are we on the PV, and is this move the PV move
+            bool child_on_PV = following_PV && (list.list[i] == PV_table[0][ply]);
 
-                // If it fails, proceed as usual
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
+            // (PVS) If found a move valued between alpha and beta, tighten the window to 1 CTP
+            if(found_PV){
+                score = -Search(depth - 1, -alpha - 1, -alpha, ply + 1, child_on_PV);
+
+                // If it fails, re-search as usual
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
             }
 
             // Otherwise, proceed as usual
-            else{ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
+            else{ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
@@ -246,14 +253,14 @@ public:
 
     void IterativeSearch(int depth){
         for(int d = 1; d < depth; d++){
-            int s = Search(d, -INFTY, INFTY, 0);
+            int s = Search(d, -INFTY, INFTY, 0, true);
             std::cout << "Iteration " << d << ": " << s << " | ";
             search_age++;
         }
         
         std::cout << "\n";
-        int score = Search(depth, -INFTY, INFTY, 0);
-        std::cout << "Iteration " << depth << " gives " << score << "\n";
+        int score = Search(depth, -INFTY, INFTY, 0, true);
+        std::cout << "Iteration " << depth << ": " << score << "\n";
 
         search_age++;
     }

@@ -3,7 +3,7 @@
 #include <iostream>
 
 std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "r1b2rk1/1p3p1p/p4B2/4p2p/8/PPP2P2/7P/2KR1B2 w - - 1 0";
+std::string FEN = "r5k1/5rpp/p1q5/2p1p1b1/2Q5/2N5/PPP2P1R/1K5R w - - 1 0";
 //std::string FEN = STARTPOS;
 
 // |-----------|
