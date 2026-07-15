@@ -18,6 +18,9 @@
 .board-square{
   min-width: 75px;
   min-height: 75px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .board-square-white{
