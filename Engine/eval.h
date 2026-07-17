@@ -152,7 +152,6 @@ public:
 
         // Move ordering. Priorities: PV --> TT --> MVV-LVA
         if(following_PV){ ScoreMoveList(list, PV_table[0][ply]); }
-        // If using best move from TT, ignore UB since no move raised alpha
         else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move); }
         else{ ScoreMoveList(list, 0); }
 
@@ -252,9 +251,9 @@ public:
     }
 
     void IterativeSearch(int depth){
-        for(int d = 1; d < depth; d++){
-            int s = Search(d, -INFTY, INFTY, 0, true);
-            std::cout << "Iteration " << d << ": " << s << " | ";
+        for(int iteration_depth = 1; iteration_depth < depth; iteration_depth++){
+            int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
+            std::cout << "Iteration " << iteration_depth << ": " << s << " | ";
             search_age++;
         }
         

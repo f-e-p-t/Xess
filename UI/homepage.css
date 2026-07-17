@@ -10,6 +10,14 @@
   opacity: 50%;
 }
 
+.highlighted{
+  background-color: rgb(194, 194, 194);
+}
+
+.UI-container{
+  display: flex;
+}
+
 .board-container{
   width: fit-content;
 }
@@ -41,4 +49,36 @@
 
 .board-square-black{
   background-color: rgb(0, 156, 115);
+}
+
+.piece-svg{
+  cursor: pointer;
+}
+
+.promotion-chooser-white-container{
+  display: flex;
+  align-items: center;
+}
+
+.promotion-chooser-white{
+  border-style: solid;
+  border-width: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+
+  background-color: rgb(225, 225, 225);
+}
+
+.promotion-chooser-black-container{
+  display: flex;
+  align-items: center;
+}
+
+.promotion-chooser-black{
+  border-style: solid;
+  border-width: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+
+  background-color: rgb(225, 225, 225);
 }

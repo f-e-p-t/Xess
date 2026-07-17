@@ -2,9 +2,12 @@
 #include "heatmap.h"
 #include <iostream>
 
-std::string STARTPOS = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string FEN = "r1b2rk1/1p3p1p/p4B2/4p2p/8/PPP2P2/7P/2KR1B2 w - - 1 0";
-//std::string FEN = STARTPOS;
+// |--------------------|
+// | Starting Gamestate |------------------------------------------------------
+// |--------------------|
+
+std::string FEN = "8/8/3k4/8/8/4K3/8/8 w - - 0 1";
+Colour player_playing_as = Colour::black;
 
 // |-----------|
 // | The board |---------------------------------------------------------------
