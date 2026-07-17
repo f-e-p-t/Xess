@@ -10,12 +10,26 @@ let initialised = false;
 async function InitialiseUI(){
   if(initialised){ return; }
 
-  // Set the polling interval
+  setInterval(PollBoardStringFromEngine, 400);
 
   Homepage();
 }
 
 window.addEventListener("DOMContentLoaded", InitialiseUI, { once: true });
+
+async function PollBoardStringFromEngine(){
+  const response = await fetch("http://localhost:8000/poll-board-update");
+  const responseBody = await response.json();
+
+  if(!response.ok){
+    console.log("Error receiving board update");
+    return;
+  }
+
+  console.log(responseBody);
+  boardString = responseBody.board;
+  Homepage();
+}
 
 function Homepage(){
 

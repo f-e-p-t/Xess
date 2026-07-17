@@ -257,14 +257,13 @@ public:
             search_age++;
         }
         
-        std::cout << "\n";
         int score = Search(depth, -INFTY, INFTY, 0, true);
         std::cout << "Iteration " << depth << ": " << score << "\n";
 
         search_age++;
     }
 
-    void PrintPV(){
+    void PrintPVToTerminal(){
         std::cout << "\nPrincipal Variation:\n";
         for(int i = 0; i < PV_length[0]; i++){
             std::cout << "ply " << i << ": (";

@@ -129,8 +129,6 @@ public:
 
     }
 
-    bool chess_engine_running = true;
-
     void run(){
         SYSTEM_INFO sysinfo{}; GetSystemInfo(&sysinfo); auto worker_count = 2 * sysinfo.dwNumberOfProcessors;
         for(int i = 0; i < worker_count; i++){
@@ -461,7 +459,7 @@ private:
                 delete ctx; continue;
             }
 
-            std::cout << "Socket " << ctx->sock << " connected and associated to IOCP" << std::endl;
+            //std::cout << "Socket " << ctx->sock << " connected and associated to IOCP" << std::endl;
 
             UpdateSocketLastUse(ctx->sock, sh);
 
@@ -518,7 +516,7 @@ private:
                 std::scoped_lock lock(sh_s->mtx);
                 sh_s->shard.erase(ctx->sock);
                 }   // <<<--------------->>>
-                std::cout << "Socket gracefully closed: " << ctx->sock << std::endl;
+                //std::cout << "Socket gracefully closed: " << ctx->sock << std::endl;
                 delete ctx; continue;
             }
 
@@ -577,7 +575,7 @@ private:
                 delete ctx; continue;
             }
 
-            std::cout << sh->shard[ctx->sock].acc.substr(0, req_length) << std::endl;
+            //std::cout << sh->shard[ctx->sock].acc.substr(0, req_length) << std::endl;
             HTTPRequest req = parser.ParseRequest(sh->shard[ctx->sock].acc);
             if(req.error == REQUEST_MALFORMED){ // Close, erase, continue
                 closesocket(ctx->sock);
@@ -655,7 +653,7 @@ private:
 
             UpdateSocketLastUse(ctx->sock, sh);
 
-            std::cout << "Send operation completed on socket " << ctx->sock << std::endl;
+            //std::cout << "Send operation completed on socket " << ctx->sock << std::endl;
 
             {   // <<<--------------->>>
             std::scoped_lock lock(sh_s->mtx);
@@ -763,7 +761,7 @@ private:
         // Note: if IO begins on a socket after it has been deemed expired, the closure should result in 10038 on IO repost.
         // At this point, any socket info put into the scmaps for that socket SHOULD be erased again by 10038 error handling.
         for(SOCKET& s : time_out){
-            std::cout << "Socket " << s << " timed out" << std::endl;
+            //std::cout << "Socket " << s << " timed out" << std::endl;
             closesocket(s);
             {   // <<<--------------->>>
             std::scoped_lock lock(sh.mtx);

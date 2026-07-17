@@ -6,8 +6,8 @@
 // | Starting Gamestate |------------------------------------------------------
 // |--------------------|
 
-std::string FEN = "8/8/8/3kp1p1/1P1pp1P1/6q1/8/7K w - - 0 1";
-Colour player_playing_as = Colour::black;
+std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+Colour player_playing_as = Colour::white;
 
 // |-----------|
 // | The board |---------------------------------------------------------------

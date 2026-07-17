@@ -5,6 +5,8 @@
 
 using json = nlohmann::json;
 
+Board UI_board = board;
+
 void InitialiseAll(){
     TT.SetSize(engine.transposition_table_size_MB);
     InitialiseZobristKeys();
@@ -37,8 +39,6 @@ uint16_t ConvertLANMoveToEngineMoveIfLegal(std::string LAN){
         case 'q': { promotion_type = Piece::queen; break; }
         default: { promotion_type = Piece::NO_PIECE; break; }
     }
-
-    std::cout << source << "   " << target << "   " << promotion_type << "\n";
 
     MoveList list; GeneratePseudoLegalMoves(list);
     uint16_t move;
@@ -126,7 +126,7 @@ GameEnd GameFinishedType(){
 std::string GetUIBoardStringFromBoard(){
     std::string notFEN = "";
     for(int sq = 0; sq < 64; sq++){
-        switch(board.PieceAtSquare(sq, Colour::white)){
+        switch(UI_board.PieceAtSquare(sq, Colour::white)){
             case Piece::pawn: { notFEN += 'P'; continue; }
             case Piece::knight: { notFEN += 'N'; continue; }
             case Piece::bishop: { notFEN += 'B'; continue; }
@@ -136,7 +136,7 @@ std::string GetUIBoardStringFromBoard(){
             default: { break; }
         }
         
-        switch(board.PieceAtSquare(sq, Colour::black)){
+        switch(UI_board.PieceAtSquare(sq, Colour::black)){
             case Piece::pawn: { notFEN += 'p'; break; }
             case Piece::knight: { notFEN += 'n'; break; }
             case Piece::bishop: { notFEN += 'b'; break; }
@@ -151,11 +151,14 @@ std::string GetUIBoardStringFromBoard(){
 }
 
 HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
-    HTTPReqRes pair = HTTPReqRes(req, res);
 
-    // Handle a board UI update request
+    if(req.target == "/poll-board-update"){
+        res.status_code = 200;
+        json j; j["board"] = GetUIBoardStringFromBoard();
+        res.ApplicationJSON(j.dump());
+    }
 
-    return pair;
+    return HTTPReqRes(req, res);
 }
 
 int main(){
@@ -165,21 +168,47 @@ int main(){
 
     // ------------
 
-    engine.search_depth = 12;
+    engine.search_depth = 10;
     engine.transposition_table_size_MB = 512;
 
     ParseFEN(FEN);
     InitialiseAll();
     PrintBoardToTerminal();
+    UI_board = board;
 
     // when creating gp loop, remember to clear things, like nodecount and PV
-
-    // ---
 
     server.run();
 
     // Gameplay loop
-    while(true){}
+    while(GameFinishedType() == GameEnd::in_play){
+        
+        // Player to move
+        if(board.to_move == player_playing_as){
+            std::string player_input; uint16_t player_move; bool legal_move_chosen = false;
+            while(!legal_move_chosen){
+                std::cout  << "Enter move: "; std::cin >> player_input;
+                player_move = ConvertLANMoveToEngineMoveIfLegal(player_input);
+                if(player_move){ legal_move_chosen = true; }
+            }
+            board.MakeMove(player_move, board.to_move);
+            UI_board.MakeMove(player_move, UI_board.to_move);
+        }
+
+        // Engine to move
+        else {
+            engine.IterativeSearch(engine.search_depth);
+            std::cout << "Nodes searched: " << nodes_searched << "\n\n";
+            engine.PrintPVToTerminal();
+            board.MakeMove(PV_table[0][0], board.to_move);
+            UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
+
+            memset(PV_table, 0, sizeof(PV_table));
+            nodes_searched = 0;
+        }
+
+        PrintBoardToTerminal();
+    }
 
     return 0;
 }
