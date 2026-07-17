@@ -1,18 +1,9 @@
 import {
-  GetPieceIndex, GetSquareIndex, PieceAtIndex, SetUpPromotionPanels, HandlePromotionMove,
-  FillBoardFromBoardString, Until
+  FillBoardFromBoardString, GetPieceIndex, GetSquareIndex, PieceAtIndex
 } from "./utilities.js";
 
 // Not using FEN notation - this is in a minimal form such that the board can be displayed on the screen
 export let boardString = "----------------------------------------------------------------";
-
-export const moveData = {
-  source: 0,
-  target: 0,
-  // 0 - not a promo ||| 1 - knight ||| 2 - bishop ||| 3 - rook ||| 4 - queen
-  pawnPromotionType: 0
-};
-let squareContainingDraggingMouse = 0;
 
 let initialised = false;
 

@@ -129,6 +129,8 @@ public:
 
     }
 
+    bool chess_engine_running = true;
+
     void run(){
         SYSTEM_INFO sysinfo{}; GetSystemInfo(&sysinfo); auto worker_count = 2 * sysinfo.dwNumberOfProcessors;
         for(int i = 0; i < worker_count; i++){
@@ -140,6 +142,31 @@ public:
         for(int i = 0; i < CONCURRENT_ACCEPTEXS; i++){ PostAcceptEx(); posted_acceptexs++; }
 
         // Housekeeping loop
+        workers.emplace_back([this]() { this->HousekeepingLoop(); });
+    }
+
+    std::vector<std::string> CORS;
+
+    // Chain up functions to be run on each HTTP request. Signature HTTPReqRes (HTTPRequest, HTTPResponse)
+    std::vector<std::function<HTTPReqRes(HTTPRequest, HTTPResponse)>> chain;
+
+private:
+    WSADATA wsa_data;
+    SOCKET lsocket;
+    HANDLE IOCP;
+    int worker_count;
+    DWORD flags = 0;
+    std::atomic<int> posted_acceptexs = 0;
+
+    ShardedCmap scmap;
+    ShardedCmap_s scmap_s;
+    
+    TimeoutList tl;
+
+    std::vector<std::thread> workers;
+    std::vector<std::thread> sweepers;
+
+    DWORD WINAPI HousekeepingLoop(){
         while(true){
             Sleep(HOUSEKEEPER_POLL_RATE_MS);
             // Maintain the AcceptExs
@@ -184,28 +211,9 @@ public:
             );
             }   // <<<--------------->>>
         }
+
+        return 0;
     }
-
-    std::vector<std::string> CORS;
-
-    // Chain up functions to be run on each HTTP request. Signature HTTPReqRes (HTTPRequest, HTTPResponse)
-    std::vector<std::function<HTTPReqRes(HTTPRequest, HTTPResponse)>> chain;
-
-private:
-    WSADATA wsa_data;
-    SOCKET lsocket;
-    HANDLE IOCP;
-    int worker_count;
-    DWORD flags = 0;
-    std::atomic<int> posted_acceptexs = 0;
-
-    ShardedCmap scmap;
-    ShardedCmap_s scmap_s;
-    
-    TimeoutList tl;
-
-    std::vector<std::thread> workers;
-    std::vector<std::thread> sweepers;
 
     void UpdateSocketLastUse(SOCKET sock, CmapShard * sh){
         auto now = std::chrono::steady_clock::now();

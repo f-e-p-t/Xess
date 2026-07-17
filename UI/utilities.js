@@ -1,4 +1,4 @@
-import { boardString, moveData } from "./homepage.js";
+import { boardString } from "./homepage.js";
 
 export function FillBoardFromBoardString(){
   for(let i = 0; i < 64; i++){
