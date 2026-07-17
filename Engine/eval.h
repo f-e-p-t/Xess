@@ -127,7 +127,7 @@ public:
             
             // Denormalise depth to mate
             if(stored_score > CHECKMATE_THRESHOLD){ stored_score -= ply; }
-            else if(stored_score < -CHECKMATE_THRESHOLD){stored_score += ply; }
+            else if(stored_score < -CHECKMATE_THRESHOLD){ stored_score += ply; }
 
             if(info.flag == TEntryFlag::exact){ return stored_score; }
             if(info.flag == TEntryFlag::LB && stored_score >= beta){ return stored_score; }
@@ -180,19 +180,20 @@ public:
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
-            // Better move - update the trackers
-            if(score > best_score){ best_score = score; best_move = list.list[i]; }
+            // Better move
+            if(score > best_score){
+                best_score = score; best_move = list.list[i];
+            
+                if(score > alpha){
+                    alpha = score; found_PV = true;
+                    PV_table[ply][ply] = list.list[i];
+                    for(int j = ply + 1; j < PV_length[ply + 1]; j++){ PV_table[ply][j] = PV_table[ply + 1][j]; }
+                    PV_length[ply] = PV_length[ply + 1];
+                }
+            }
 
             // Beta cutoff (fail-high)
             if(best_score >= beta){ break; }
-
-            // No beta cutoff - raise alpha, toggle found_PV and fill PV table
-            if(score > alpha){ alpha = score; found_PV = true;
-            
-                PV_table[ply][ply] = list.list[i];
-                for(int i = ply + 1; i < PV_length[ply + 1]; i++){ PV_table[ply][i] = PV_table[ply + 1][i]; }
-                PV_length[ply] = PV_length[ply + 1];
-            }
         }
 
         // Checkmate and stalemate

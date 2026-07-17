@@ -203,6 +203,8 @@ int main(){
             board.MakeMove(PV_table[0][0], board.to_move);
             UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
 
+
+
             memset(PV_table, 0, sizeof(PV_table));
             nodes_searched = 0;
         }
