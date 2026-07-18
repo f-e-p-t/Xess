@@ -118,11 +118,12 @@ public:
     int Search(int depth, int alpha, int beta, int ply, bool following_PV){
         const int original_alpha = alpha;
         bool found_PV = false;
+        PV_length[ply] = ply;
 
         // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
-        if(TT_match && info.depth >= depth){
+        if(TT_match && info.depth >= depth && !following_PV){
             int stored_score = info.score;
             
             // Denormalise depth to mate
@@ -138,7 +139,6 @@ public:
         // Leaf node - hand over to Quiescence
         if(depth == 0){
             nodes_searched++;
-            PV_length[ply] = ply;
             return Quiescence(alpha, beta, ply);
         }
 
@@ -183,9 +183,10 @@ public:
             // Better move
             if(score > best_score){
                 best_score = score; best_move = list.list[i];
-            
+
                 if(score > alpha){
                     alpha = score; found_PV = true;
+            
                     PV_table[ply][ply] = list.list[i];
                     for(int j = ply + 1; j < PV_length[ply + 1]; j++){ PV_table[ply][j] = PV_table[ply + 1][j]; }
                     PV_length[ply] = PV_length[ply + 1];
@@ -252,16 +253,13 @@ public:
     }
 
     void IterativeSearch(int depth){
-        for(int iteration_depth = 1; iteration_depth < depth; iteration_depth++){
+        for(int iteration_depth = 1; iteration_depth <= depth; iteration_depth++){
             int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
             std::cout << "Iteration " << iteration_depth << ": " << s << " | ";
             search_age++;
         }
-        
-        int score = Search(depth, -INFTY, INFTY, 0, true);
-        std::cout << "Iteration " << depth << ": " << score << "\n";
 
-        search_age++;
+        std::cout << "\n";
     }
 
     void PrintPVToTerminal(){

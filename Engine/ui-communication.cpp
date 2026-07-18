@@ -200,12 +200,14 @@ int main(){
             engine.IterativeSearch(engine.search_depth);
             std::cout << "Nodes searched: " << nodes_searched << "\n\n";
             engine.PrintPVToTerminal();
+
+
+
             board.MakeMove(PV_table[0][0], board.to_move);
             UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
 
-
-
             memset(PV_table, 0, sizeof(PV_table));
+            memset(PV_length, 0, sizeof(PV_length));
             nodes_searched = 0;
         }
 
