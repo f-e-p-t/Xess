@@ -12,22 +12,22 @@ u64 RandomU64(){
 // | Constants and Enums |---------------------------------------------------
 // |---------------------|
 
-const int PAWN_VALUE_CTP = 100;
-const int KNIGHT_VALUE_CTP = 320;
-const int BISHOP_VALUE_CTP = 330;
-const int ROOK_VALUE_CTP = 500;
-const int QUEEN_VALUE_CTP = 900;
+constexpr int PAWN_VALUE_CTP = 100;
+constexpr int KNIGHT_VALUE_CTP = 320;
+constexpr int BISHOP_VALUE_CTP = 330;
+constexpr int ROOK_VALUE_CTP = 500;
+constexpr int QUEEN_VALUE_CTP = 900;
 
 // This can shrink when there is a stronger evaluation
-const int DELTA = 300;
+constexpr int DELTA = 300;
 
 // For the triangular PV table
-const int MAX_PLY = 64;
+constexpr int MAX_PLY = 64;
 
-const int INFTY = 1000000000;
-const int CHECKMATE = 1000000;
-const int CHECKMATE_THRESHOLD = 900000;
-const int STALEMATE = 0;
+constexpr int INFTY = 1000000000;
+constexpr int CHECKMATE = 1000000;
+constexpr int CHECKMATE_THRESHOLD = 900000;
+constexpr int STALEMATE = 0;
 
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };

@@ -164,7 +164,7 @@ HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
 int main(){
     Fepttp server = Fepttp(8000);
     server.chain.push_back(UICommunication);
-    server.CORS.push_back("http://127.0.0.1:5500"); // <--- Add CORS header to allow play from 'Live Server' extension on port 5500
+    server.CORS.push_back("http://127.0.0.1:5500"); // <--- Add CORS header to allow reqs from 'Live Server' extension on port 5500
 
     // ------------
 
@@ -176,7 +176,7 @@ int main(){
     PrintBoardToTerminal();
     UI_board = board;
 
-    // when creating gp loop, remember to clear things, like nodecount and PV
+    // ------------
 
     server.run();
 

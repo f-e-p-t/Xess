@@ -824,10 +824,10 @@ void PrintMoveToTerminal(uint16_t move){
     std::cout << "flags: " << ((move >> 12) & mask) << " | ";
 
     mask = (1ULL << 6) - 1;
-    std::cout << "to " << IToSq(((move >> 6) & mask)) << " ";
+    std::cout << IToSq(((move >> 0) & mask));
 
     mask = (1ULL << 6) - 1;
-    std::cout << "from " << IToSq(((move >> 0) & mask));
+    std::cout << IToSq(((move >> 6) & mask));
 }
 
 void PrintMoveListToTerminal(MoveList list){
@@ -837,14 +837,7 @@ void PrintMoveListToTerminal(MoveList list){
 
         std::cout << "([" << i << "] ";
 
-        mask = (1ULL << 4) - 1;
-        std::cout << "flags: " << ((list.list[i] >> 12) & mask) << " | ";
-
-        mask = (1ULL << 6) - 1;
-        std::cout << "to " << IToSq(((list.list[i] >> 6) & mask)) << " ";
-
-        mask = (1ULL << 6) - 1;
-        std::cout << "from " << IToSq(((list.list[i] >> 0) & mask));
+        PrintMoveToTerminal(list.list[i]);
         
         std::cout << ")  ";
     }

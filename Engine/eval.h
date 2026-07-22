@@ -36,6 +36,23 @@ private:
 
 Evaluation eval;
 
+// |---------------------|
+// | PV, killer, history |-----------------------------------------------------
+// |---------------------|
+
+uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
+int PV_length[MAX_PLY] = {0};
+
+struct KillerMovePair {
+    uint16_t one;
+    uint16_t two;
+};
+
+KillerMovePair killer_moves[MAX_PLY];
+
+// [colour][piece][square]
+uint16_t history_moves[2][6][64];
+
 // |---------------|
 // | Move Ordering |-----------------------------------------------------------
 // |---------------|
@@ -50,36 +67,80 @@ int mvv_lva[6][6] = {
     {100, 320, 300, 500, 900, 0} // By king
 };
 
-int ScoreMove(uint16_t move){
+int ScoreMove(uint16_t move, int ply){
     int source = move & 0b0000000000111111;
     int target = (move & 0b0000111111000000) >> 6;
     int flag = (move & 0b1111000000000000) >> 12;
 
     int score = 0;
 
-    // Captures (MVV-LVA)
+    // Non-EP captures (MVV-LVA)
     if(flag == 4 || flag >= 12){
         Piece source_piece = board.PieceAtSquare(source, board.to_move);
         Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
         score += mvv_lva[source_piece][target_piece];
+
+        // Extra points if the capture is a promotion
+        switch(flag){
+            case MoveFlag::capture_knight_promo: { score += KNIGHT_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::capture_bishop_promo: { score += BISHOP_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::capture_rook_promo: { score += ROOK_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::capture_queen_promo: { score += QUEEN_VALUE_CTP - PAWN_VALUE_CTP;  break; }
+            default: { break; }
+        }
+
+        // Bonus for captures
+        score += 5000;
     }
+
+    // Quiet promotions
+    else if(8 <= flag && flag <= 11){
+        switch(flag){
+            case MoveFlag::quiet_knight_promo: { score += KNIGHT_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::quiet_bishop_promo: { score += BISHOP_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::quiet_rook_promo: { score += ROOK_VALUE_CTP - PAWN_VALUE_CTP; break; }
+            case MoveFlag::quiet_queen_promo: { score += QUEEN_VALUE_CTP - PAWN_VALUE_CTP;  break; }
+            default: { break; }
+        }
+
+        // Bonus for promotions
+        score += 5000;
+    }
+
+    // Quiet moves (killers, history)
+    else if(flag <= 3){
+        // Killers get a slightly smaller bonus than captures
+        if(move == killer_moves[ply].one){ score += 4000; }
+        else if(move == killer_moves[ply].two){ score += 3000; }
+
+        // History
+        else{
+            Piece source_piece = board.PieceAtSquare(source, board.to_move);
+            score += history_moves[board.to_move][source_piece][target];
+        }
+
+        // PROCEED LATER, FOLLOWING BCC EP 57
+    }
+
+    // EP also gets the same bonus as captures
+    else{ score += 5000; }
 
     return score;
 }
 
-void ScoreMoveList(MoveList& list, uint16_t best_move){
+void ScoreMoveList(MoveList& list, uint16_t best_move, int ply){
     for(int i = 0; i < list.count; i++){
-        list.score_list[i] = ScoreMove(list.list[i]);
+        list.score_list[i] = ScoreMove(list.list[i], ply);
 
         // A huge bonus for the best move (taken from the TT)
         if(list.list[i] == best_move){ list.score_list[i] += 10000; }
     }
 }
 
-void ScoreQuiescenceMoveList(MoveList& list){
+void ScoreQuiescenceMoveList(MoveList& list, int ply){
     for(int i = 0; i < list.count; i++){
-        list.score_list[i] = ScoreMove(list.list[i]);
+        list.score_list[i] = ScoreMove(list.list[i], ply);
     }
 }
 
@@ -94,15 +155,6 @@ void PrepareBestMove(MoveList& list, int index){
     std::swap(list.score_list[index], list.score_list[best_index]);
 }
 
-// |----|
-// | PV |-----------------------------------------------------
-// |----|
-
-uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
-int PV_length[MAX_PLY] = {0};
-
-bool following_PV = true;
-
 // |---------------------------------|
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
@@ -115,7 +167,7 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, int alpha, int beta, int ply, bool following_PV){
+    int Search(int depth, int alpha, int beta, int ply, bool on_PV){
         const int original_alpha = alpha;
         bool found_PV = false;
         PV_length[ply] = ply;
@@ -123,7 +175,7 @@ public:
         // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
-        if(TT_match && info.depth >= depth && !following_PV){
+        if(TT_match && info.depth >= depth && !on_PV){
             int stored_score = info.score;
             
             // Denormalise depth to mate
@@ -151,9 +203,9 @@ public:
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move ordering. Priorities: PV --> TT --> MVV-LVA
-        if(following_PV){ ScoreMoveList(list, PV_table[0][ply]); }
-        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move); }
-        else{ ScoreMoveList(list, 0); }
+        if(on_PV){ ScoreMoveList(list, PV_table[0][ply], ply); }
+        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ply); }
+        else{ ScoreMoveList(list, 0, ply); }
 
         for(int i = 0; i < list.count; i++){
             
@@ -165,7 +217,7 @@ public:
             legal_moves = true;
 
             // Are we on the PV, and is this move the PV move
-            bool child_on_PV = following_PV && (list.list[i] == PV_table[0][ply]);
+            bool child_on_PV = on_PV && (list.list[i] == PV_table[0][ply]);
 
             // (PVS) If found a move valued between alpha and beta, tighten the window to 1 CTP
             if(found_PV){
@@ -186,7 +238,7 @@ public:
 
                 if(score > alpha){
                     alpha = score; found_PV = true;
-            
+                    
                     PV_table[ply][ply] = list.list[i];
                     for(int j = ply + 1; j < PV_length[ply + 1]; j++){ PV_table[ply][j] = PV_table[ply + 1][j]; }
                     PV_length[ply] = PV_length[ply + 1];
@@ -225,7 +277,7 @@ public:
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
 
-        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list);
+        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list, ply);
         for(int i = 0; i < list.count; i++){
             nodes_searched++;
             PrepareBestMove(list, i);
