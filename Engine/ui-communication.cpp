@@ -168,7 +168,7 @@ int main(){
 
     // ------------
 
-    engine.search_depth = 10;
+    engine.search_depth = 8;
     engine.transposition_table_size_MB = 512;
 
     ParseFEN(FEN);
@@ -198,7 +198,7 @@ int main(){
         // Engine to move
         else {
             engine.IterativeSearch(engine.search_depth);
-            std::cout << "Nodes searched: " << nodes_searched << "\n\n";
+            std::cout << "\nNodes searched: " << nodes_searched << "\n";
             engine.PrintPVToTerminal();
 
 

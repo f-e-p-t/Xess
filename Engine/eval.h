@@ -44,14 +44,14 @@ uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
 int PV_length[MAX_PLY] = {0};
 
 struct KillerMovePair {
-    uint16_t one;
-    uint16_t two;
+    uint16_t one = 0;
+    uint16_t two = 0;
 };
 
 KillerMovePair killer_moves[MAX_PLY];
 
 // [colour][piece][square]
-uint16_t history_moves[2][6][64];
+uint16_t history_moves[64][64] = {0};
 
 // |---------------|
 // | Move Ordering |-----------------------------------------------------------
@@ -117,10 +117,8 @@ int ScoreMove(uint16_t move, int ply){
         // History
         else{
             Piece source_piece = board.PieceAtSquare(source, board.to_move);
-            score += history_moves[board.to_move][source_piece][target];
+            score += history_moves[source][target];
         }
-
-        // PROCEED LATER, FOLLOWING BCC EP 57
     }
 
     // EP also gets the same bonus as captures
@@ -246,7 +244,18 @@ public:
             }
 
             // Beta cutoff (fail-high)
-            if(best_score >= beta){ break; }
+            if(best_score >= beta){
+                // Insert killer moves
+                killer_moves[ply].two = killer_moves[ply].one;
+                killer_moves[ply].one = list.list[i];
+
+                    // Store history move
+                    int source = list.list[i] & 0b0000000000111111;
+                    int target = (list.list[i] & 0b0000111111000000) >> 6;
+                    history_moves[source][target] += depth;
+    
+                break;
+            }
         }
 
         // Checkmate and stalemate
