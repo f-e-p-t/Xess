@@ -214,7 +214,7 @@ int main(){
             board.MakeMove(PV_table[0][0], board.to_move);
             UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
             UpdateLastMoveSourceAndTarget(PV_table[0][0]);
-
+            
             memset(PV_table, 0, sizeof(PV_table));
             memset(PV_length, 0, sizeof(PV_length));
             memset(history_moves, 0, sizeof(history_moves));

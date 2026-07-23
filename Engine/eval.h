@@ -251,7 +251,8 @@ public:
                 
                     int source = list.list[i] & 0b0000000000111111;
                     int target = (list.list[i] & 0b0000111111000000) >> 6;
-                    history_moves[source][target] = std::min(history_moves[source][target] + depth, 3000);
+                    int old = history_moves[source][target];
+                    history_moves[source][target] = HistoryMoveScoringFormula(HistoryMoveScoringFormulaInverse(old) + depth);
                 }
     
                 break;

@@ -29,6 +29,9 @@ constexpr int CHECKMATE = 1000000;
 constexpr int CHECKMATE_THRESHOLD = 900000;
 constexpr int STALEMATE = 0;
 
+constexpr int history_formula_numer = 3000;
+constexpr int history_formula_denom = 1000;
+
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
 enum Square { // Top-left ---> bottom-right as read
@@ -91,4 +94,17 @@ void InitialiseZobristKeys(){
     }
 
     side_key = RandomU64();
+}
+
+// |------|
+// | Misc |--------------------------------------------------------------------
+// |------|
+
+// Asymptotically approaches history_formula_numer
+int HistoryMoveScoringFormula(int x){
+    return (history_formula_numer * x) / (x + history_formula_denom);
+}
+
+int HistoryMoveScoringFormulaInverse(int x){
+    return (history_formula_denom * x) / (history_formula_numer - x);
 }
