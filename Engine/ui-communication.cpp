@@ -6,6 +6,12 @@
 using json = nlohmann::json;
 
 Board UI_board = board;
+int last_move_source_and_target[2] = {0};
+void UpdateLastMoveSourceAndTarget(uint16_t move){
+    int source = move & 0b0000000000111111;
+    int target = (move >> 6) & 0b0000000000111111;
+    last_move_source_and_target[0] = source; last_move_source_and_target[1] = target;
+}
 
 void InitialiseAll(){
     TT.SetSize(engine.transposition_table_size_MB);
@@ -154,7 +160,10 @@ HTTPReqRes UICommunication(HTTPRequest req, HTTPResponse res){
 
     if(req.target == "/poll-board-update"){
         res.status_code = 200;
-        json j; j["board"] = GetUIBoardStringFromBoard();
+        json j;
+        j["board"] = GetUIBoardStringFromBoard();
+        j["source"] = last_move_source_and_target[0];
+        j["target"] = last_move_source_and_target[1];
         res.ApplicationJSON(j.dump());
     }
 
@@ -168,8 +177,8 @@ int main(){
 
     // ------------
 
-    engine.search_depth = 8;
-    engine.transposition_table_size_MB = 512;
+    engine.search_depth = 10;
+    engine.transposition_table_size_MB = 1024;
 
     ParseFEN(FEN);
     InitialiseAll();
@@ -193,6 +202,7 @@ int main(){
             }
             board.MakeMove(player_move, board.to_move);
             UI_board.MakeMove(player_move, UI_board.to_move);
+            UpdateLastMoveSourceAndTarget(player_move);
         }
 
         // Engine to move
@@ -201,13 +211,13 @@ int main(){
             std::cout << "\nNodes searched: " << nodes_searched << "\n";
             engine.PrintPVToTerminal();
 
-
-
             board.MakeMove(PV_table[0][0], board.to_move);
             UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
+            UpdateLastMoveSourceAndTarget(PV_table[0][0]);
 
             memset(PV_table, 0, sizeof(PV_table));
             memset(PV_length, 0, sizeof(PV_length));
+            memset(history_moves, 0, sizeof(history_moves));
             nodes_searched = 0;
         }
 

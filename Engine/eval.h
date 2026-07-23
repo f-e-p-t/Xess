@@ -50,14 +50,14 @@ struct KillerMovePair {
 
 KillerMovePair killer_moves[MAX_PLY];
 
-// [colour][piece][square]
+// [source][target]
 uint16_t history_moves[64][64] = {0};
 
 // |---------------|
 // | Move Ordering |-----------------------------------------------------------
 // |---------------|
 
-// [attacker][victim] ~ [source][target]
+// [attacker][victim] ~ [source piece][target piece]
 int mvv_lva[6][6] = {
     {105, 325, 335, 505, 905, 0}, // By pawn
     {104, 324, 334, 504, 904, 0}, // By knight
@@ -112,11 +112,10 @@ int ScoreMove(uint16_t move, int ply){
     else if(flag <= 3){
         // Killers get a slightly smaller bonus than captures
         if(move == killer_moves[ply].one){ score += 4000; }
-        else if(move == killer_moves[ply].two){ score += 3000; }
+        else if(move == killer_moves[ply].two){ score += 3500; }
 
         // History
         else{
-            Piece source_piece = board.PieceAtSquare(source, board.to_move);
             score += history_moves[source][target];
         }
     }
@@ -200,7 +199,7 @@ public:
 
         MoveList list; GeneratePseudoLegalMoves(list);
 
-        // Move ordering. Priorities: PV --> TT --> MVV-LVA
+        // Move scoring
         if(on_PV){ ScoreMoveList(list, PV_table[0][ply], ply); }
         else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ply); }
         else{ ScoreMoveList(list, 0, ply); }
@@ -245,14 +244,15 @@ public:
 
             // Beta cutoff (fail-high)
             if(best_score >= beta){
-                // Insert killer moves
-                killer_moves[ply].two = killer_moves[ply].one;
-                killer_moves[ply].one = list.list[i];
-
-                    // Store history move
+                // Quiet move - insert killer move, update history table
+                if( ((list.list[i] & 0b1111000000000000) >> 12) <= 3 ){
+                    killer_moves[ply].two = killer_moves[ply].one;
+                    killer_moves[ply].one = list.list[i];
+                
                     int source = list.list[i] & 0b0000000000111111;
                     int target = (list.list[i] & 0b0000111111000000) >> 6;
-                    history_moves[source][target] += depth;
+                    history_moves[source][target] = std::min(history_moves[source][target] + depth, 3000);
+                }
     
                 break;
             }

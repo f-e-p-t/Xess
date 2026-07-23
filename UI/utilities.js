@@ -33,6 +33,18 @@ export function FillBoardFromBoardString(){
   }
 }
 
+export function UpdateSourceAndTargetHighlights(source, target){
+  const highlightedSquares = document.querySelectorAll(".board-square-highlighted-0");
+  highlightedSquares.forEach((hSquare) => {
+    hSquare.classList.remove("board-square-highlighted-0");
+  });
+
+  const sourceSquare = document.querySelector(`.board-square-${source}`);
+  sourceSquare.classList.add("board-square-highlighted-0");
+  const targetSquare = document.querySelector(`.board-square-${target}`);
+  targetSquare.classList.add("board-square-highlighted-0");
+}
+
 export function GetSquareIndex(square){
   for(let i = 0; i < 64; i++){
     if(square.classList.contains(`board-square-${i}`)){

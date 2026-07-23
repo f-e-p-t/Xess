@@ -6,7 +6,7 @@
 // | Starting Gamestate |------------------------------------------------------
 // |--------------------|
 
-std::string FEN = "r1bqrbk1/1p3ppp/1pn5/1Q2p3/N6P/3P1NP1/PP2PPB1/2R1K2R w K - 1 16";
+std::string FEN = "5n2/2R2PP1/4P3/6K1/1kp5/1pq5/5R2/8 w - - 0 1";
 Colour player_playing_as = Colour::black;
 
 // |-----------|
@@ -821,13 +821,19 @@ void ParseFEN(std::string FEN){
 void PrintMoveToTerminal(uint16_t move){
     uint16_t mask;
     mask = (1ULL << 4) - 1;
-    std::cout << "flags: " << ((move >> 12) & mask) << " | ";
+    int flag = (move >> 12) & mask;
+    std::cout << "flag: " << flag << " | ";
 
     mask = (1ULL << 6) - 1;
     std::cout << IToSq(((move >> 0) & mask));
 
     mask = (1ULL << 6) - 1;
     std::cout << IToSq(((move >> 6) & mask));
+
+    if(flag == 8 || flag == 12){ std::cout << "n"; }
+    else if(flag == 9 || flag == 13){ std::cout << "b"; }
+    else if(flag == 10 || flag == 14){ std::cout << "r"; }
+    else if(flag == 11 || flag == 15){ std::cout << "q"; }
 }
 
 void PrintMoveListToTerminal(MoveList list){

@@ -1,11 +1,16 @@
 import {
-  FillBoardFromBoardString, GetPieceIndex, GetSquareIndex, PieceAtIndex
+  FillBoardFromBoardString, GetPieceIndex, GetSquareIndex, PieceAtIndex,
+  UpdateSourceAndTargetHighlights
 } from "./utilities.js";
 
 // Not using FEN notation - this is in a minimal form such that the board can be displayed on the screen
 export let boardString = "----------------------------------------------------------------";
 
 let initialised = false;
+let lastMoveInfo = {
+  source: -1,
+  target: -1
+};
 
 async function InitialiseUI(){
   if(initialised){ return; }
@@ -28,6 +33,9 @@ async function PollBoardStringFromEngine(){
 
   console.log(responseBody);
   boardString = responseBody.board;
+  lastMoveInfo.source = responseBody.source;
+  lastMoveInfo.target = responseBody.target;
+
   Homepage();
 }
 
@@ -57,6 +65,9 @@ function Homepage(){
 
   // Fill it with pieces from boardString
   FillBoardFromBoardString();
+
+  // Update the highlighted source and target squares
+  UpdateSourceAndTargetHighlights(lastMoveInfo.source, lastMoveInfo.target);
 }
 
 Homepage();
