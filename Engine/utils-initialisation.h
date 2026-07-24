@@ -32,6 +32,12 @@ constexpr int STALEMATE = 0;
 constexpr int history_formula_numer = 3000;
 constexpr int history_formula_denom = 1000;
 
+// Aspiration window width
+constexpr int WINDOW_WIDTH = 50;
+
+// Max stage (24 with current values)
+constexpr int STAGE_MAX = 24;
+
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
 enum Square { // Top-left ---> bottom-right as read
@@ -51,6 +57,7 @@ enum MoveFlag {
     capture_knight_promo, capture_bishop_promo, capture_rook_promo, capture_queen_promo
 };
 enum TEntryFlag { exact, UB, LB };
+enum GameStage { midgame, endgame };
 
 int PieceValue(Piece piece){
     switch(piece){

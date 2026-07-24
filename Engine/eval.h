@@ -1,6 +1,8 @@
 #include "movegen.h"
 #include <iostream>
 
+using namespace Heatmap;
+
 // |------------|
 // | Evaluation |--------------------------------------------------------------
 // |------------|
@@ -25,8 +27,38 @@ public:
         return mat;
     }
 
+    // Finds game stage (midgame --> endgame) based on non-pawn pieces on the board. N = 1, B = 1, R = 2, Q = 4
+    int Stage(){
+        int mat = 0;
+
+        mat += NumberOfNonZeroBits(board.pieces[Colour::white][Piece::knight]);
+        mat += NumberOfNonZeroBits(board.pieces[Colour::white][Piece::bishop]);
+        mat += 2 * NumberOfNonZeroBits(board.pieces[Colour::white][Piece::rook]);
+        mat += 4 * NumberOfNonZeroBits(board.pieces[Colour::white][Piece::queen]);
+        mat += NumberOfNonZeroBits(board.pieces[Colour::black][Piece::knight]);
+        mat += NumberOfNonZeroBits(board.pieces[Colour::black][Piece::bishop]);
+        mat += 2 * NumberOfNonZeroBits(board.pieces[Colour::black][Piece::rook]);
+        mat += 4 * NumberOfNonZeroBits(board.pieces[Colour::black][Piece::queen]);
+
+        return std::min(mat, STAGE_MAX);
+    }
+
+    int StaticEvaluationMidgameExclusive(){
+        
+        return 0;
+    }
+
+    int StaticEvaluationEndgameExclusive(){
+
+        return 0;
+    }
+
     int StaticEvaluation(){
+        int stage = Stage();
+
         int val = Material();
+
+        val += ((stage * StaticEvaluationMidgameExclusive()) + ((STAGE_MAX - stage) * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
 
         return val;
     }
