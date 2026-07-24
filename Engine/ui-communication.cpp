@@ -177,7 +177,7 @@ int main(){
 
     // ------------
 
-    engine.search_depth = 10;
+    engine.search_depth = 14;
     engine.transposition_table_size_MB = 1024;
 
     ParseFEN(FEN);
@@ -218,6 +218,7 @@ int main(){
             memset(PV_table, 0, sizeof(PV_table));
             memset(PV_length, 0, sizeof(PV_length));
             memset(history_moves, 0, sizeof(history_moves));
+            memset(killer_moves, 0, sizeof(killer_moves));
             nodes_searched = 0;
         }
 

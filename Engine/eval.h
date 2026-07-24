@@ -1,8 +1,6 @@
 #include "movegen.h"
 #include <iostream>
 
-using namespace Heatmap;
-
 // |------------|
 // | Evaluation |--------------------------------------------------------------
 // |------------|
@@ -43,14 +41,133 @@ public:
         return std::min(mat, STAGE_MAX);
     }
 
-    int StaticEvaluationMidgameExclusive(){
+    int HandleStageIndependentHeatmaps(){
+        int val = 0;
+        int index;
+        u64 bitboard;
         
-        return 0;
+        // Pawns
+        bitboard = board.pieces[Colour::white][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::pawn[Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::pawn[Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        // Knights
+        bitboard = board.pieces[Colour::white][Piece::knight];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::knight[Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::knight];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::knight[Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        // Bishops
+        bitboard = board.pieces[Colour::white][Piece::bishop];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::bishop[Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::bishop];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::bishop[Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        // Rooks
+        bitboard = board.pieces[Colour::white][Piece::rook];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::rook[Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::rook];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::rook[Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        // Queens
+        bitboard = board.pieces[Colour::white][Piece::queen];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::queen[Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::queen];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::queen[Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        return val;
+    }
+
+    int StaticEvaluationMidgameExclusive(){
+        int val = 0;
+        
+        // King heatmaps
+        int index;
+        u64 bitboard;
+        bitboard = board.pieces[Colour::white][Piece::king];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::king[GameStage::midgame][Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::king];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::king[GameStage::midgame][Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        return val;
     }
 
     int StaticEvaluationEndgameExclusive(){
+        int val = 0;
+        
+        // King heatmaps
+        int index;
+        u64 bitboard;
+        bitboard = board.pieces[Colour::white][Piece::king];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::king[GameStage::endgame][Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
 
-        return 0;
+        bitboard = board.pieces[Colour::black][Piece::king];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::king[GameStage::endgame][Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        return val;
     }
 
     int StaticEvaluation(){
@@ -58,7 +175,8 @@ public:
 
         int val = Material();
 
-        val += ((stage * StaticEvaluationMidgameExclusive()) + ((STAGE_MAX - stage) * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
+        val += HandleStageIndependentHeatmaps();
+        val += (((STAGE_MAX - stage) * StaticEvaluationMidgameExclusive()) + (stage * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
 
         return val;
     }
@@ -148,7 +266,7 @@ int ScoreMove(uint16_t move, int ply){
 
         // History
         else{
-            score += history_moves[source][target];
+            score += HistoryMoveScoringFormula(history_moves[source][target]);
         }
     }
 
@@ -283,8 +401,7 @@ public:
                 
                     int source = list.list[i] & 0b0000000000111111;
                     int target = (list.list[i] & 0b0000111111000000) >> 6;
-                    int old = history_moves[source][target];
-                    history_moves[source][target] = HistoryMoveScoringFormula(HistoryMoveScoringFormulaInverse(old) + depth);
+                    history_moves[source][target] += depth * depth;
                 }
     
                 break;
