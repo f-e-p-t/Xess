@@ -6,7 +6,7 @@
 // | Starting Gamestate |------------------------------------------------------
 // |--------------------|
 
-std::string FEN = "8/3k1p2/p3p1p1/4P2p/3P1P2/b3BP1P/P7/K7 w - - 0 32";
+std::string FEN = "5r2/1p4k1/p1p1Q3/3p2P1/7r/q1P5/2B1R1K1/8 w - - 5 41";
 Colour player_playing_as = Colour::black;
 
 // |-----------|

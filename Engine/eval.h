@@ -396,8 +396,10 @@ public:
             if(best_score >= beta){
                 // Quiet move - insert killer move, update history table
                 if( ((list.list[i] & 0b1111000000000000) >> 12) <= 3 ){
-                    killer_moves[ply].two = killer_moves[ply].one;
-                    killer_moves[ply].one = list.list[i];
+                    if(list.list[i] != killer_moves[ply].one){
+                        killer_moves[ply].two = killer_moves[ply].one;
+                        killer_moves[ply].one = list.list[i];
+                    }
                 
                     int source = list.list[i] & 0b0000000000111111;
                     int target = (list.list[i] & 0b0000111111000000) >> 6;
@@ -468,6 +470,9 @@ public:
             int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
             std::cout << "Iteration " << iteration_depth << ": " << s << " | ";
             search_age++;
+
+            // Clear what needs to be cleared
+            memset(killer_moves, 0, sizeof(killer_moves));
         }
 
         std::cout << "\n";
