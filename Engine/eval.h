@@ -203,6 +203,17 @@ KillerMovePair killer_moves[MAX_PLY];
 // [source][target]
 uint16_t history_moves[64][64] = {0};
 
+// |-----|
+// | SEE |---------------------------------------------------------------------
+// |-----|
+
+int SEE(uint16_t move){
+    int source = move & 0b0000000000111111;
+    int target = (move & 0b0000111111000000) >> 6;
+
+    // Trying on-the-fly approach to finding weakest attacker. will need to pass in occ
+}
+
 // |---------------|
 // | Move Ordering |-----------------------------------------------------------
 // |---------------|

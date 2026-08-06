@@ -27,6 +27,13 @@ public:
     UnmakeMoveGameState(uint8_t ep, uint8_t cr, int hmc, int fmn, u64 hk): en_passant_square(ep), castling_rights(cr), halfmove_clock(hmc), fullmove_number(fmn), hash_key(hk) {}
 };
 
+class AttackerInfo {
+    Piece piece;
+    int source;
+
+    AttackerInfo(Piece pc, int sc): piece(pc), source(sc) {}
+};
+
 class Board {
 public:
     u64 pieces[2][6] = {0};
@@ -75,6 +82,10 @@ public:
 
         // Square is not attacked
         return false;
+    }
+
+    AttackerInfo WeakestAttackerInMask(u64 mask, int sq, Colour side){
+        // find the weakest (side) attacker of (sq) that lies in (mask). mask lets SEE pop used attackers without mutating board
     }
 
     bool InCheck(Colour side){
