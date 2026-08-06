@@ -59,6 +59,7 @@ enum MoveFlag {
 enum TEntryFlag { exact, UB, LB };
 enum GameStage { midgame, endgame };
 
+// Empty square - value 0
 int PieceValue(Piece piece){
     switch(piece){
         case Piece::pawn: { return PAWN_VALUE_CTP; }
@@ -69,6 +70,11 @@ int PieceValue(Piece piece){
         default: { return 0; }
     }
 }
+
+int piece_promotion_value_by_flag[16] = {
+    0, 0, 0, 0, 0, 0, 0, 0, KNIGHT_VALUE_CTP, BISHOP_VALUE_CTP, ROOK_VALUE_CTP, QUEEN_VALUE_CTP,
+    KNIGHT_VALUE_CTP, BISHOP_VALUE_CTP, ROOK_VALUE_CTP, QUEEN_VALUE_CTP
+};
 
 // |--------------|
 // | Zobrist Keys |------------------------------------------------------------

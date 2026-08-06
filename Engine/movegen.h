@@ -6,7 +6,7 @@
 // | Starting Gamestate |------------------------------------------------------
 // |--------------------|
 
-std::string FEN = "5r2/1p4k1/p1p1Q3/3p2P1/7r/q1P5/2B1R1K1/8 w - - 5 41";
+std::string FEN = "r1bqkb1r/ppp1pppp/2n2n2/3p4/4P1B1/1R6/PPPP1PPP/1NB3K1 w kq - 0 1";
 Colour player_playing_as = Colour::black;
 
 // |-----------|
@@ -28,10 +28,11 @@ public:
 };
 
 class AttackerInfo {
+public:
     Piece piece;
     int source;
 
-    AttackerInfo(Piece pc, int sc): piece(pc), source(sc) {}
+    AttackerInfo(Piece pc, int src): piece(pc), source(src) {}
 };
 
 class Board {
@@ -84,8 +85,64 @@ public:
         return false;
     }
 
-    AttackerInfo WeakestAttackerInMask(u64 mask, int sq, Colour side){
-        // find the weakest (side) attacker of (sq) that lies in (mask). mask lets SEE pop used attackers without mutating board
+    // find the weakest (side) attacker of (sq) that lies in (mask). mask lets SEE pop used attackers without mutating board
+    AttackerInfo LeastValuableAttackerInMask(u64 mask, int sq, Colour side){
+        u64 O;
+        u64 other = colour_occ[!side];
+        u64 candidates;
+        u64 intersection;
+        bool queen_attacking = false;
+        int queen_square = Square::NO_SQUARE;
+
+        // Pawn?
+        candidates = pieces[side][Piece::pawn] & mask;
+        intersection = pawn_attacks[!side][sq] & candidates;
+        if(intersection){
+            return AttackerInfo(Piece::pawn, GetLSBitIndex(intersection));
+        }
+
+        // Knight?
+        candidates = pieces[side][Piece::knight] & mask;
+        intersection = knight_attacks[sq] & candidates;
+        if(intersection){
+            return AttackerInfo(Piece::knight, GetLSBitIndex(intersection));
+        }
+
+        // Bishop (or queen)?
+        candidates = (pieces[side][Piece::bishop] | pieces[side][Piece::queen]) & mask;
+        O = bishop_rays_no_edges[sq] & total_occ;
+        intersection = (bishop_attacks[sq][HashBishopOccConfig(sq, O)] & ~other) & candidates;
+        if(intersection){
+            int square = GetLSBitIndex(intersection);
+
+            // Bishop? Return info. Queen? Handle later
+            if(PieceAtSquare(square, side) == Piece::bishop){ return AttackerInfo(Piece::bishop, square); }
+            else{ queen_attacking = true; queen_square = square; }
+        }
+
+        // Rook (or queen)?
+        candidates = (pieces[side][Piece::rook] | pieces[side][Piece::queen]) & mask;
+        O = rook_rays_no_edges[sq] & total_occ;
+        intersection = (rook_attacks[sq][HashRookOccConfig(sq, O)] & ~other) & candidates;
+        if(intersection){
+            int square = GetLSBitIndex(intersection);
+
+            // Rook? Return info. Queen? Handle later
+            if(PieceAtSquare(square, side) == Piece::rook){ return AttackerInfo(Piece::rook, square); }
+            else{ queen_attacking = true; queen_square = square; }
+        }
+
+        // Queen?
+        if(queen_attacking){ return AttackerInfo(Piece::queen, queen_square); }
+
+        // King?
+        candidates = pieces[side][Piece::king] & mask;
+        intersection = king_attacks[sq] & candidates;
+        if(intersection){
+            return AttackerInfo(Piece::king, GetLSBitIndex(intersection));
+        }
+
+        return AttackerInfo(Piece::NO_PIECE, Square::NO_SQUARE);
     }
 
     bool InCheck(Colour side){

@@ -207,11 +207,63 @@ uint16_t history_moves[64][64] = {0};
 // | SEE |---------------------------------------------------------------------
 // |-----|
 
+// Static Exchange Evaluation
 int SEE(uint16_t move){
     int source = move & 0b0000000000111111;
     int target = (move & 0b0000111111000000) >> 6;
+    int flag = (move & 0b1111000000000000) >> 12;
 
-    // Trying on-the-fly approach to finding weakest attacker. will need to pass in occ
+    int prev_attacker_value = 0;
+    Colour to_move = board.to_move;
+    u64 occ_mask = board.total_occ;
+    int exchange[32] = {0};
+    int d = 0;
+
+    // The first move of the exchange
+    prev_attacker_value = PieceValue(board.PieceAtSquare(source, to_move));
+
+    // If the move was EP (can only happen on first capture of exchange), more needs to be done
+    if(flag == MoveFlag::EP_capture){
+        exchange[d] += PAWN_VALUE_CTP;
+        int capture_square = target + (to_move == Colour::white ? -8 : 8);
+        occ_mask ^= (1ULL << capture_square);
+        occ_mask ^= (1ULL << source);
+        occ_mask ^= (1ULL << target);
+    }
+    else{
+        exchange[d] += PieceValue(board.PieceAtSquare(target, static_cast<Colour>(!board.to_move)));
+        // Promotion - adjust the gain and prev value
+        if(flag >= 8){
+            exchange[d] += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
+            prev_attacker_value = piece_promotion_value_by_flag[flag];
+        }
+        occ_mask ^= (1ULL << source);
+    }
+
+    to_move = static_cast<Colour>(!to_move);
+
+    // Complete the exchange
+    while(true){
+        AttackerInfo info = board.LeastValuableAttackerInMask(occ_mask, target, to_move);
+        if(info.source == Square::NO_SQUARE){ break; }
+
+        // Break if this capture would put the king in check (king is most valuable, so this would be white's last capture)
+        if(info.piece == Piece::king){
+            if(board.SquareAttackedBy(target, static_cast<Colour>(!to_move))){ break; }
+        }
+
+        d++;
+        exchange[d] = prev_attacker_value - exchange[d - 1];
+        prev_attacker_value = PieceValue(info.piece);
+
+        occ_mask ^= (1ULL << info.source);
+        to_move = static_cast<Colour>(!to_move);
+    }
+
+    // Now evaluate the exchange with minmax
+    // ...
+
+    return 0;
 }
 
 // |---------------|
@@ -235,35 +287,27 @@ int ScoreMove(uint16_t move, int ply){
 
     int score = 0;
 
-    // Non-EP captures (MVV-LVA)
-    if(flag == 4 || flag >= 12){
-        Piece source_piece = board.PieceAtSquare(source, board.to_move);
-        Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
+    // Captures (MVV-LVA)
+    if(flag == 4 || flag == 5 || flag >= 12){
+        if(flag == 5){
+            score += 5000 + mvv_lva[0][0];
+        } else{
+            Piece source_piece = board.PieceAtSquare(source, board.to_move);
+            Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
-        score += mvv_lva[source_piece][target_piece];
+            score += mvv_lva[source_piece][target_piece];
 
-        // Extra points if the capture is a promotion
-        switch(flag){
-            case MoveFlag::capture_knight_promo: { score += KNIGHT_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::capture_bishop_promo: { score += BISHOP_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::capture_rook_promo: { score += ROOK_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::capture_queen_promo: { score += QUEEN_VALUE_CTP - PAWN_VALUE_CTP;  break; }
-            default: { break; }
+            // Extra points if the capture is a promotion
+            if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
+
+            // Bonus for captures
+            score += 5000;
         }
-
-        // Bonus for captures
-        score += 5000;
     }
 
     // Quiet promotions
     else if(8 <= flag && flag <= 11){
-        switch(flag){
-            case MoveFlag::quiet_knight_promo: { score += KNIGHT_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::quiet_bishop_promo: { score += BISHOP_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::quiet_rook_promo: { score += ROOK_VALUE_CTP - PAWN_VALUE_CTP; break; }
-            case MoveFlag::quiet_queen_promo: { score += QUEEN_VALUE_CTP - PAWN_VALUE_CTP;  break; }
-            default: { break; }
-        }
+        score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
 
         // Bonus for promotions
         score += 5000;
@@ -280,9 +324,6 @@ int ScoreMove(uint16_t move, int ply){
             score += HistoryMoveScoringFormula(history_moves[source][target]);
         }
     }
-
-    // EP also gets the same bonus as captures
-    else{ score += 5000; }
 
     return score;
 }
