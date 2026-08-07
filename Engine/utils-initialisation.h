@@ -32,6 +32,9 @@ constexpr int STALEMATE = 0;
 constexpr int history_formula_numer = 3000;
 constexpr int history_formula_denom = 1000;
 
+constexpr int GOOD_CAPTURE_BONUS = 200;
+constexpr int BAD_CAPTURE_PENALTY = 200;
+
 // Aspiration window width
 constexpr int WINDOW_WIDTH = 50;
 

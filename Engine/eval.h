@@ -240,8 +240,6 @@ int SEE(uint16_t move){
     else{
         exchange[d] += PieceValue(board.PieceAtSquare(target, static_cast<Colour>(!board.to_move)));
     }
-
-    std::cout << exchange[d] << "\n";
     occ_mask ^= (1ULL << source);
     to_move = static_cast<Colour>(!to_move);
 
@@ -272,7 +270,6 @@ int SEE(uint16_t move){
             prev_attacker_value = QUEEN_VALUE_CTP;
         }
 
-        std::cout << exchange[d] << "\n";
         occ_mask ^= (1ULL << info.source);
         to_move = static_cast<Colour>(!to_move);
     }
@@ -308,30 +305,32 @@ int ScoreMove(uint16_t move, int ply){
 
     int score = 0;
 
-    // Captures (MVV-LVA)
+    // Captures
     if(flag == 4 || flag == 5 || flag >= 12){
         if(flag == 5){
-            score += 5000 + mvv_lva[0][0];
+            score += (5000 + mvv_lva[0][0]);
         } else{
             Piece source_piece = board.PieceAtSquare(source, board.to_move);
             Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
-            score += mvv_lva[source_piece][target_piece];
+            if(PieceValue(source_piece) <= PieceValue(target_piece) && source_piece != Piece::king){
+                score += (5000 + mvv_lva[source_piece][target_piece] + GOOD_CAPTURE_BONUS);
+                if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
+            } else{
+                int SEE_score = SEE(move);
+                score += (5000 + mvv_lva[source_piece][target_piece]);
+                score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
+            }
 
-            // Extra points if the capture is a promotion
-            if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
 
-            // Bonus for captures
-            score += 5000;
         }
     }
 
     // Quiet promotions
     else if(8 <= flag && flag <= 11){
-        score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
-
-        // Bonus for promotions
-        score += 5000;
+        int SEE_score = SEE(move);
+        score += 5000 + piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
+        score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
     }
 
     // Quiet moves (killers, history)
@@ -402,17 +401,22 @@ public:
             if(stored_score > CHECKMATE_THRESHOLD){ stored_score -= ply; }
             else if(stored_score < -CHECKMATE_THRESHOLD){ stored_score += ply; }
 
-            if(info.flag == TEntryFlag::exact){ return stored_score; }
-            if(info.flag == TEntryFlag::LB && stored_score >= beta){ return stored_score; }
-            if(info.flag == TEntryFlag::UB && stored_score <= alpha){ return stored_score; }
-            if(alpha >= beta){ return stored_score; }
+            if(
+                info.flag == TEntryFlag::exact ||
+                info.flag == TEntryFlag::LB && stored_score >= beta ||
+                info.flag == TEntryFlag::UB && stored_score <= alpha ||
+                alpha >= beta
+            ){
+                nodes_searched++; return stored_score;
+            }
         }
 
         // Leaf node - hand over to Quiescence
         if(depth == 0){
-            nodes_searched++;
             return Quiescence(alpha, beta, ply);
         }
+
+        nodes_searched++;
 
         int score = 0;
         int best_score = -INFTY;
@@ -428,9 +432,8 @@ public:
         else{ ScoreMoveList(list, 0, ply); }
 
         for(int i = 0; i < list.count; i++){
-            
-            // Ongoing move ordering
             PrepareBestMove(list, i);
+            //std::cout << list.score_list[i] << " ";
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
@@ -505,15 +508,17 @@ public:
     }
 
     int Quiescence(int alpha, int beta, int ply){
+        nodes_searched++;
         int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         int best_score = static_eval;
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
 
+        bool in_check = board.InCheck(board.to_move);
+
         MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list, ply);
         for(int i = 0; i < list.count; i++){
-            nodes_searched++;
             PrepareBestMove(list, i);
 
             // If the move is not a pawn promotion, apply delta pruning
