@@ -107,7 +107,6 @@ void PrintBitboardToTerminal(u64 bitboard){
         }
         std::cout << "\n";
     }
-    std::cout << "\n";
 }
 
 // |---------------------------|

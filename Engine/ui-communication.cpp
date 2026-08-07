@@ -189,6 +189,9 @@ int main(){
     //AttackerInfo info = board.LeastValuableAttackerInMask(bitmask, Square::f2, Colour::white);
     //std::cout << "\n" << info.piece << " " << info.source << "\n\n";
 
+    MoveList list; GeneratePseudoLegalMoves(list); PrintMoveListToTerminal(list);
+    std::cout << "\n\n" << SEE(list.list[6]) << "\n\n";
+
     // ------------
 
     server.run();

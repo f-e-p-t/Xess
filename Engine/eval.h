@@ -207,63 +207,84 @@ uint16_t history_moves[64][64] = {0};
 // | SEE |---------------------------------------------------------------------
 // |-----|
 
-// Static Exchange Evaluation
+// Static Exchange Evaluation (No: pin detection)
 int SEE(uint16_t move){
     int source = move & 0b0000000000111111;
     int target = (move & 0b0000111111000000) >> 6;
     int flag = (move & 0b1111000000000000) >> 12;
 
-    int prev_attacker_value = 0;
-    Colour to_move = board.to_move;
-    u64 occ_mask = board.total_occ;
-    int exchange[32] = {0};
-    int d = 0;
+    if(flag <= 3){ return 0; } // <-- Redundant safety net
 
-    // The first move of the exchange
+    int prev_attacker_value = 0; Colour to_move = board.to_move; u64 occ_mask = board.total_occ; int exchange[32] = {0}; int d = 0;
+
+    // ------------
+
     prev_attacker_value = PieceValue(board.PieceAtSquare(source, to_move));
 
-    // If the move was EP (can only happen on first capture of exchange), more needs to be done
+    // If the move was EP
     if(flag == MoveFlag::EP_capture){
         exchange[d] += PAWN_VALUE_CTP;
-        int capture_square = target + (to_move == Colour::white ? -8 : 8);
-        occ_mask ^= (1ULL << capture_square);
-        occ_mask ^= (1ULL << source);
-        occ_mask ^= (1ULL << target);
-    }
-    else{
-        exchange[d] += PieceValue(board.PieceAtSquare(target, static_cast<Colour>(!board.to_move)));
-        // Promotion - adjust the gain and prev value
-        if(flag >= 8){
-            exchange[d] += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
-            prev_attacker_value = piece_promotion_value_by_flag[flag];
-        }
-        occ_mask ^= (1ULL << source);
+        int capture_square = target + (to_move == Colour::white ? 8 : -8);
+        occ_mask ^= (1ULL << capture_square); occ_mask ^= (1ULL << target);
     }
 
+    // If the move was a promotion
+    else if(flag >= 8){
+        exchange[d] += (piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP);
+        prev_attacker_value = piece_promotion_value_by_flag[flag];
+        if(flag <= 11){ occ_mask ^= (1ULL << target); } // <-- If the promotion is quiet, toggle on the empty target square
+        else{ exchange[d] += PieceValue(board.PieceAtSquare(target, static_cast<Colour>(!board.to_move))); }
+    }
+
+    // Otherwise (normal captures)
+    else{
+        exchange[d] += PieceValue(board.PieceAtSquare(target, static_cast<Colour>(!board.to_move)));
+    }
+
+    std::cout << exchange[d] << "\n";
+    occ_mask ^= (1ULL << source);
     to_move = static_cast<Colour>(!to_move);
+
+    // ------------
 
     // Complete the exchange
     while(true){
         AttackerInfo info = board.LeastValuableAttackerInMask(occ_mask, target, to_move);
-        if(info.source == Square::NO_SQUARE){ break; }
+        if(info.source == Square::NO_SQUARE){ break; } // <-- PICK UP BUGFIXING FROM HERE
 
         // Break if this capture would put the king in check (king is most valuable, so this would be white's last capture)
         if(info.piece == Piece::king){
-            if(board.SquareAttackedBy(target, static_cast<Colour>(!to_move))){ break; }
+            u64 new_occ_mask = occ_mask ^ (1ULL << info.source);
+            AttackerInfo other_info = board.LeastValuableAttackerInMask(new_occ_mask, target, static_cast<Colour>(!to_move));
+            if(other_info.piece != Piece::NO_PIECE){ break; }
         }
 
         d++;
         exchange[d] = prev_attacker_value - exchange[d - 1];
         prev_attacker_value = PieceValue(info.piece);
 
+        // Special case - the capture is a pawn promotion (we do not have the move, so assume it is a queen promo)
+        if(
+            (to_move == Colour::white && info.piece == Piece::pawn && target <= 7) ||
+            (to_move == Colour::black && info.piece == Piece::pawn && target >= 56)
+        ){
+            exchange[d] += (QUEEN_VALUE_CTP - PAWN_VALUE_CTP);
+            prev_attacker_value = QUEEN_VALUE_CTP;
+        }
+
+        std::cout << exchange[d] << "\n";
         occ_mask ^= (1ULL << info.source);
         to_move = static_cast<Colour>(!to_move);
     }
 
     // Now evaluate the exchange with minmax
-    // ...
+    while(d > 0)
+    {
+        exchange[d - 1] = -std::max(-exchange[d - 1], exchange[d]);
+        d--;
+    }
 
-    return 0;
+    return exchange[0];
 }
 
 // |---------------|

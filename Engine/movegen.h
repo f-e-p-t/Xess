@@ -6,7 +6,7 @@
 // | Starting Gamestate |------------------------------------------------------
 // |--------------------|
 
-std::string FEN = "r1bqkb1r/ppp1pppp/2n2n2/3p4/4P1B1/1R6/PPPP1PPP/1NB3K1 w kq - 0 1";
+std::string FEN = "1k1r4/1pp5/p2p4/4P3/8/6P1/3R1P1P/3Q2K1 w - - 0 1";
 Colour player_playing_as = Colour::black;
 
 // |-----------|
@@ -88,7 +88,7 @@ public:
     // find the weakest (side) attacker of (sq) that lies in (mask). mask lets SEE pop used attackers without mutating board
     AttackerInfo LeastValuableAttackerInMask(u64 mask, int sq, Colour side){
         u64 O;
-        u64 other = colour_occ[!side];
+        u64 other = colour_occ[!side] & mask;
         u64 candidates;
         u64 intersection;
         bool queen_attacking = false;
@@ -110,24 +110,24 @@ public:
 
         // Bishop (or queen)?
         candidates = (pieces[side][Piece::bishop] | pieces[side][Piece::queen]) & mask;
-        O = bishop_rays_no_edges[sq] & total_occ;
+        O = bishop_rays_no_edges[sq] & total_occ & mask;
         intersection = (bishop_attacks[sq][HashBishopOccConfig(sq, O)] & ~other) & candidates;
         if(intersection){
             int square = GetLSBitIndex(intersection);
 
-            // Bishop? Return info. Queen? Handle later
+            // Bishop? Return info. Queen? Handle below
             if(PieceAtSquare(square, side) == Piece::bishop){ return AttackerInfo(Piece::bishop, square); }
             else{ queen_attacking = true; queen_square = square; }
         }
 
         // Rook (or queen)?
         candidates = (pieces[side][Piece::rook] | pieces[side][Piece::queen]) & mask;
-        O = rook_rays_no_edges[sq] & total_occ;
+        O = rook_rays_no_edges[sq] & total_occ & mask;
         intersection = (rook_attacks[sq][HashRookOccConfig(sq, O)] & ~other) & candidates;
         if(intersection){
             int square = GetLSBitIndex(intersection);
 
-            // Rook? Return info. Queen? Handle later
+            // Rook? Return info. Queen? Handle below
             if(PieceAtSquare(square, side) == Piece::rook){ return AttackerInfo(Piece::rook, square); }
             else{ queen_attacking = true; queen_square = square; }
         }
