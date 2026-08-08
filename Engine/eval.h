@@ -314,12 +314,13 @@ int ScoreMove(uint16_t move, int ply){
             Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
             if(PieceValue(source_piece) <= PieceValue(target_piece) && source_piece != Piece::king){
-                score += (5000 + mvv_lva[source_piece][target_piece] + GOOD_CAPTURE_BONUS);
+                score += (5000 + mvv_lva[source_piece][target_piece]);
                 if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
             } else{
-                int SEE_score = SEE(move);
-                score += (5000 + mvv_lva[source_piece][target_piece]);
-                score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
+                //int SEE_score = SEE(move);
+                //score += (5000 + mvv_lva[source_piece][target_piece]);
+                //score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
+                score += 5000 + SEE(move);
             }
 
 
@@ -328,9 +329,7 @@ int ScoreMove(uint16_t move, int ply){
 
     // Quiet promotions
     else if(8 <= flag && flag <= 11){
-        int SEE_score = SEE(move);
         score += 5000 + piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
-        score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
     }
 
     // Quiet moves (killers, history)

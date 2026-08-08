@@ -190,7 +190,7 @@ int main(){
     //std::cout << "\n" << info.piece << " " << info.source << "\n\n";
 
     //MoveList list; GeneratePseudoLegalMoves(list); PrintMoveListToTerminal(list);
-    //std::cout << "\n\n" << SEE(list.list[6]) << "\n\n";
+    //std::cout << "\n\n" << SEE(list.list[8]) << "\n\n";
 
     // ------------
 
