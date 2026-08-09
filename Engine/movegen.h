@@ -2,12 +2,14 @@
 #include "heatmap.h"
 #include <iostream>
 
-// |--------------------|
-// | Starting Gamestate |------------------------------------------------------
-// |--------------------|
+// |------------------------|
+// | Gamestate and Settings |------------------------------------------------------
+// |------------------------|
 
-std::string FEN = "r1bqkb1r/3pn1pp/p1n2p2/1p2p3/2B1P3/2N1BN2/PPP2PPP/R2QK2R w KQkq b6 0 10";
+std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 Colour player_playing_as = Colour::black;
+int engine_search_depth_max = 99;
+int engine_transposition_table_size_MB = 1024;
 
 // |-----------|
 // | The board |---------------------------------------------------------------
@@ -891,6 +893,23 @@ void PrintMoveToTerminal(uint16_t move){
     mask = (1ULL << 4) - 1;
     int flag = (move >> 12) & mask;
     std::cout << "flag: " << flag << " | ";
+
+    mask = (1ULL << 6) - 1;
+    std::cout << IToSq(((move >> 0) & mask));
+
+    mask = (1ULL << 6) - 1;
+    std::cout << IToSq(((move >> 6) & mask));
+
+    if(flag == 8 || flag == 12){ std::cout << "n"; }
+    else if(flag == 9 || flag == 13){ std::cout << "b"; }
+    else if(flag == 10 || flag == 14){ std::cout << "r"; }
+    else if(flag == 11 || flag == 15){ std::cout << "q"; }
+}
+
+void PrintMoveToTerminalNoFlag(uint16_t move){
+    uint16_t mask;
+    mask = (1ULL << 4) - 1;
+    int flag = (move >> 12) & mask;
 
     mask = (1ULL << 6) - 1;
     std::cout << IToSq(((move >> 0) & mask));

@@ -317,13 +317,12 @@ int ScoreMove(uint16_t move, int ply){
                 score += (5000 + mvv_lva[source_piece][target_piece]);
                 if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
             } else{
-                //int SEE_score = SEE(move);
+                int SEE_score = SEE(move);
                 //score += (5000 + mvv_lva[source_piece][target_piece]);
                 //score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
-                score += 5000 + SEE(move);
+                //score += 5000 + SEE_score;
+                score += 5000 + (SEE_score >= 0 ? SEE_score : 2 * SEE_score);
             }
-
-
         }
     }
 
@@ -381,7 +380,7 @@ u64 nodes_searched = 0;
 
 class Engine {
 public:
-    int search_depth;
+    int search_depth_max;
 
     int transposition_table_size_MB;
 
@@ -542,11 +541,17 @@ public:
         return best_score;
     }
 
-    void IterativeSearch(int depth){
-        for(int iteration_depth = 1; iteration_depth <= depth; iteration_depth++){
+    void IterativeSearch(){
+        int iteration_depth = 1;
+        while(iteration_depth <= search_depth_max){
             int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
-            std::cout << "Iteration " << iteration_depth << ": " << s << " | ";
+            std::cout << "Depth " << iteration_depth << " | Nodes: " << nodes_searched << " | Score: " << s << " | PV:";
+            PrintPVToTerminal();
+            std::cout << "\n";
+            
             search_age++;
+            nodes_searched = 0;
+            iteration_depth++;
 
             // Clear what needs to be cleared
             memset(killer_moves, 0, sizeof(killer_moves));
@@ -556,11 +561,9 @@ public:
     }
 
     void PrintPVToTerminal(){
-        std::cout << "\nPrincipal Variation:\n";
         for(int i = 0; i < PV_length[0]; i++){
-            std::cout << "ply " << i << ": (";
-            PrintMoveToTerminal(PV_table[0][i]);
-            std::cout << ")\n";
+            std::cout << " ";
+            PrintMoveToTerminalNoFlag(PV_table[0][i]);
         }
     }
 private:

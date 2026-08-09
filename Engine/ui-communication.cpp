@@ -177,8 +177,8 @@ int main(){
 
     // ------------
 
-    engine.search_depth = 10;
-    engine.transposition_table_size_MB = 1024;
+    engine.search_depth_max = engine_search_depth_max;
+    engine.transposition_table_size_MB = engine_transposition_table_size_MB;
 
     ParseFEN(FEN);
     InitialiseAll();
@@ -214,9 +214,7 @@ int main(){
 
         // Engine to move
         else {
-            engine.IterativeSearch(engine.search_depth);
-            std::cout << "\nNodes searched: " << nodes_searched << "\n";
-            engine.PrintPVToTerminal();
+            engine.IterativeSearch();
 
             board.MakeMove(PV_table[0][0], board.to_move);
             UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
