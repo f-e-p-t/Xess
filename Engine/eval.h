@@ -193,6 +193,9 @@ Evaluation eval;
 uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
 int PV_length[MAX_PLY] = {0};
 
+uint16_t last_PV_table[MAX_PLY][MAX_PLY] = {0};
+int last_PV_length[MAX_PLY] = {0};
+
 struct KillerMovePair {
     uint16_t one = 0;
     uint16_t two = 0;
@@ -378,6 +381,13 @@ void PrepareBestMove(MoveList& list, int index){
 
 u64 nodes_searched = 0;
 
+std::atomic<bool> stop = false;
+
+void StartSearchTimer(){
+    Sleep(engine_search_time_limit_ms);
+    stop = true;
+}
+
 class Engine {
 public:
     int search_depth_max;
@@ -385,6 +395,7 @@ public:
     int transposition_table_size_MB;
 
     int Search(int depth, int alpha, int beta, int ply, bool on_PV){
+        if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
         bool found_PV = false;
         PV_length[ply] = ply;
@@ -452,6 +463,8 @@ public:
             else{ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
+
+            if(stop){ return 0; } // <-- Time limit safety measure
 
             // Better move
             if(score > best_score){
@@ -545,6 +558,13 @@ public:
         int iteration_depth = 1;
         while(iteration_depth <= search_depth_max){
             int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
+
+            // Time has run out - do not update last_PV_table (the one the move is played from) and break
+            if(stop){ search_age++; nodes_searched = 0; break; }
+
+            memcpy(last_PV_table, PV_table, sizeof(last_PV_table));
+            memcpy(last_PV_length, PV_length, sizeof(last_PV_length));
+
             std::cout << "Depth " << iteration_depth << " | Nodes: " << nodes_searched << " | Score: " << s << " | PV:";
             PrintPVToTerminal();
             std::cout << "\n";
@@ -553,7 +573,6 @@ public:
             nodes_searched = 0;
             iteration_depth++;
 
-            // Clear what needs to be cleared
             memset(killer_moves, 0, sizeof(killer_moves));
         }
 
@@ -561,9 +580,9 @@ public:
     }
 
     void PrintPVToTerminal(){
-        for(int i = 0; i < PV_length[0]; i++){
+        for(int i = 0; i < last_PV_length[0]; i++){
             std::cout << " ";
-            PrintMoveToTerminalNoFlag(PV_table[0][i]);
+            PrintMoveToTerminalNoFlag(last_PV_table[0][i]);
         }
     }
 private:

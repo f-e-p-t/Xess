@@ -214,14 +214,19 @@ int main(){
 
         // Engine to move
         else {
+            std::thread th(StartSearchTimer);
             engine.IterativeSearch();
+            th.detach(); th.~thread();
+            stop = false;
 
-            board.MakeMove(PV_table[0][0], board.to_move);
-            UI_board.MakeMove(PV_table[0][0], UI_board.to_move);
-            UpdateLastMoveSourceAndTarget(PV_table[0][0]);
+            board.MakeMove(last_PV_table[0][0], board.to_move);
+            UI_board.MakeMove(last_PV_table[0][0], UI_board.to_move);
+            UpdateLastMoveSourceAndTarget(last_PV_table[0][0]);
 
             memset(PV_table, 0, sizeof(PV_table));
+            memset(last_PV_table, 0, sizeof(last_PV_table));
             memset(PV_length, 0, sizeof(PV_length));
+            memset(last_PV_length, 0, sizeof(last_PV_length));
             memset(history_moves, 0, sizeof(history_moves));
             memset(killer_moves, 0, sizeof(killer_moves));
             nodes_searched = 0;

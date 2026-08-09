@@ -2,17 +2,18 @@
 #include "heatmap.h"
 #include <iostream>
 
-// |------------------------|
-// | Gamestate and Settings |------------------------------------------------------
-// |------------------------|
+// |----------|
+// | Settings |------------------------------------------------------
+// |----------|
 
 std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-Colour player_playing_as = Colour::black;
-int engine_search_depth_max = 99;
+Colour player_playing_as = Colour::white;
+int engine_search_depth_max = MAX_PLY;
+DWORD engine_search_time_limit_ms = 30000;
 int engine_transposition_table_size_MB = 1024;
 
 // |-----------|
-// | The board |---------------------------------------------------------------
+// | The Board |---------------------------------------------------------------
 // |-----------|
 
 class UnmakeMoveGameState {
