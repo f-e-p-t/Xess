@@ -384,6 +384,7 @@ u64 nodes_searched = 0;
 std::atomic<bool> stop = false;
 
 void StartSearchTimer(){
+    if(engine_search_time_limit_ms < 0){ return; }
     Sleep(engine_search_time_limit_ms);
     stop = true;
 }
@@ -427,11 +428,8 @@ public:
 
         nodes_searched++;
 
-        int score = 0;
-        int best_score = -INFTY;
-        uint16_t best_move = 0;
-        TEntry entry;
-        bool legal_moves = false;
+        int score = 0; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; bool legal_moves = false; int reduction;
+        int flag; bool in_check = board.InCheck(board.to_move);
 
         MoveList list; GeneratePseudoLegalMoves(list);
 
@@ -442,25 +440,26 @@ public:
 
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
-            //std::cout << list.score_list[i] << " ";
-
+            flag = (list.list[i] & 0b1111000000000000) >> 12;
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
 
-            // Are we on the PV, and is this move the PV move
             bool child_on_PV = on_PV && (list.list[i] == PV_table[0][ply]);
 
-            // (PVS) If found a move valued between alpha and beta, tighten the window to 1 CTP
+            // PVS and LMR
+            reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
             if(found_PV){
-                score = -Search(depth - 1, -alpha - 1, -alpha, ply + 1, child_on_PV);
+                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV);
 
-                // If it fails, re-search as usual
+                // TRY A TWO-STEP RE-SEARCH PROCESS 
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
+            } else{
+                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV);
+                //score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV);
+
                 if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
             }
-
-            // Otherwise, proceed as usual
-            else{ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
@@ -482,7 +481,7 @@ public:
             // Beta cutoff (fail-high)
             if(best_score >= beta){
                 // Quiet move - insert killer move, update history table
-                if( ((list.list[i] & 0b1111000000000000) >> 12) <= 3 ){
+                if(flag <= 3){
                     if(list.list[i] != killer_moves[ply].one){
                         killer_moves[ply].two = killer_moves[ply].one;
                         killer_moves[ply].one = list.list[i];
@@ -498,7 +497,7 @@ public:
         }
 
         // Checkmate and stalemate
-        if(!legal_moves){ PV_length[ply] = ply; best_score = (board.InCheck(board.to_move) ? -CHECKMATE + ply : STALEMATE); }
+        if(!legal_moves){ PV_length[ply] = ply; best_score = (in_check ? -CHECKMATE + ply : STALEMATE); }
 
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
@@ -577,6 +576,28 @@ public:
         }
 
         std::cout << "\n";
+    }
+
+    // Also returns 0 if inappropriate to reduce
+    int CalculateLMRReduction(uint16_t move, int depth, int moves, int ply, bool in_check){
+        int source = move & 0b0000000000111111;
+        int target = (move & 0b0000111111000000) >> 6;
+        int flag = (move & 0b1111000000000000) >> 12;
+
+        // Conditions to avoid LMR
+        if(
+            in_check ||
+            move == killer_moves[ply].one ||
+            move == killer_moves[ply].two
+        ){
+            return 0;
+        }
+
+        if(flag <= 3){
+            return LMR_table_quiet[depth][moves];
+        } else{
+            return LMR_table_captures_promos[depth][moves];
+        }
     }
 
     void PrintPVToTerminal(){

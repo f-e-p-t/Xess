@@ -17,6 +17,7 @@ void InitialiseAll(){
     TT.SetSize(engine.transposition_table_size_MB);
     InitialiseZobristKeys();
     InitialiseHashKey();
+    InitialiseLMRTables();
     PrecomputePawnAttacksTable();
     PrecomputeKnightAttacksTable();
     PrecomputeBishopAttacksTable();
@@ -216,6 +217,7 @@ int main(){
         else {
             std::thread th(StartSearchTimer);
             engine.IterativeSearch();
+            // NEED TO TERMINATE THE FUNCTION, NOT JUST DELETE THE THREAD
             th.detach(); th.~thread();
             stop = false;
 

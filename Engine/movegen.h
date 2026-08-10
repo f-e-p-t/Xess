@@ -2,14 +2,16 @@
 #include "heatmap.h"
 #include <iostream>
 
+const std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+std::string FEN = start_pos;
 Colour player_playing_as = Colour::white;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = 30000;
+DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 1024;
 
 // |-----------|

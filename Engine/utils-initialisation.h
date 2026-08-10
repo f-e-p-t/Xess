@@ -18,7 +18,7 @@ constexpr int BISHOP_VALUE_CTP = 330;
 constexpr int ROOK_VALUE_CTP = 500;
 constexpr int QUEEN_VALUE_CTP = 900;
 
-// This can shrink when there is a stronger evaluation
+// For delta pruning
 constexpr int DELTA = 300;
 
 // For the triangular PV table
@@ -116,7 +116,27 @@ void InitialiseZobristKeys(){
 // | LMR table |---------------------------------------------------------------
 // |-----------|
 
+// [depth][moves]
+int LMR_table_captures_promos[MAX_PLY][256];
+int LMR_table_quiet[MAX_PLY][256];
 
+// The formulas
+void InitialiseLMRTables(){
+    for(int d = 0; d < MAX_PLY; d++){
+        for(int m = 0; m < 256; m++){
+            if(d == 0 || m == 0){
+                LMR_table_captures_promos[d][m] = 0;
+                LMR_table_quiet[d][m] = 0;
+                continue;
+            }
+            double entry;
+            entry =  0.2 + (std::log((double)d) * std::log((double)m) / (double)4);
+            LMR_table_captures_promos[d][m] = std::floor(entry);
+            entry = 0.4 + (std::log((double)d) * std::log((double)m) / double(3.5));
+            LMR_table_quiet[d][m] = std::floor(entry);
+        }
+    }
+}
 
 // |------|
 // | Misc |--------------------------------------------------------------------
