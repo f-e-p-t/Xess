@@ -176,7 +176,7 @@ public:
         int val = Material();
 
         val += HandleStageIndependentHeatmaps();
-        val += (((STAGE_MAX - stage) * StaticEvaluationMidgameExclusive()) + (stage * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
+        val += ((stage * StaticEvaluationMidgameExclusive()) + ((STAGE_MAX - stage) * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
 
         return val;
     }
@@ -583,6 +583,8 @@ public:
         int source = move & 0b0000000000111111;
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
+
+        Piece moved_piece_if_not_promo = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
         // Conditions to avoid LMR
         if(
