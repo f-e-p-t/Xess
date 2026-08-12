@@ -2,32 +2,57 @@
 
 namespace Heatmap {
 
-    // [colour][square] All evaluated from white's perspective
-    constexpr int pawn[2][64] =
+    // [midgame/endgame][colour][square]
+    constexpr int pawn[2][2][64] =
     {
-        {   // White pawns
-            0,  0,  0,  0,  0,  0,  0,  0,
-           50, 50, 50, 50, 50, 50, 50, 50,
-           10, 10, 20, 30, 30, 20, 10, 10,
-            5,  5, 10, 25, 25, 10,  5,  5,
-            0,  0,  0, 20, 20,  0,  0,  0,
-            0,  0,  0,  5,  5,  0,  0,  0,
-            5,  5,  0,-20,-20,  0,  5,  5,
-            0,  0,  0,  0,  0,  0,  0,  0
-        }, 
-        {   // Black pawns
-            0,  0,  0,  0,  0,  0,  0,  0,
-            5,  5,  0,-20,-20,  0,  5,  5,
-            0,  0,  0,  5,  5,  0,  0,  0,
-            0,  0,  0, 20, 20,  0,  0,  0,
-            5,  5, 10, 25, 25, 10,  5,  5,
-           10, 10, 20, 30, 30, 20, 10, 10,
-           50, 50, 50, 50, 50, 50, 50, 50,
-            0,  0,  0,  0,  0,  0,  0,  0,
+        {   // Midgame
+            {   // White pawns
+                0,  0,  0,  0,  0,  0,  0,  0,
+               20, 20, 20, 25, 25, 20, 20, 20,
+                5, 10, 20, 30, 30, 20, 10,  5,
+                0,  5, 10, 20, 20, 10,  5,  0,
+                0,  0,  5, 20, 20,  5,  0,  0,
+                0,  0,  0,  5,  5,  0,  0,  0,
+                5,  5,  0,-20,-20,  0,  5,  5,
+                0,  0,  0,  0,  0,  0,  0,  0
+            }, 
+            {   // Black pawns
+                0,  0,  0,  0,  0,  0,  0,  0,
+                5,  5,  0,-20,-20,  0,  5,  5,
+                0,  0,  0,  5,  5,  0,  0,  0,
+                0,  0,  5, 20, 20,  5,  0,  0,
+                0,  5, 10, 20, 20, 10,  5,  0,
+                5, 10, 20, 30, 30, 20, 10,  5,
+               20, 20, 20, 25, 25, 20, 20, 20,
+                0,  0,  0,  0,  0,  0,  0,  0,
+            }
+        },
+
+        {   // Endgame
+            {   // White pawns
+                0,  0,  0,  0,  0,  0,  0,  0,
+              120,120,120,120,120,120,120,120,
+               80, 80, 80, 80, 80, 80, 80, 80,
+               50, 50, 50, 50, 50, 50, 50, 50,
+               30, 30, 30, 30, 30, 30, 30, 30,
+                0,  0,  0,  0,  0,  0,  0,  0,
+               -5, -5, -5, -5, -5, -5, -5, -5,
+                0,  0,  0,  0,  0,  0,  0,  0
+            },
+            {   // Black pawns
+                0,  0,  0,  0,  0,  0,  0,  0,
+               -5, -5, -5, -5, -5, -5, -5, -5,
+                0,  0,  0,  0,  0,  0,  0,  0,
+               30, 30, 30, 30, 30, 30, 30, 30,
+               50, 50, 50, 50, 50, 50, 50, 50,
+               80, 80, 80, 80, 80, 80, 80, 80,
+              120,120,120,120,120,120,120,120,
+                0,  0,  0,  0,  0,  0,  0,  0
+            }
         }
     };
 
-    // [colour][square] All evaluated from white's perspective
+    // [colour][square]
     constexpr int knight[2][64] = 
     {
         {   // White knight
@@ -52,7 +77,7 @@ namespace Heatmap {
         }
     };
 
-    // [colour][square] All evaluated from white's perspective
+    // [colour][square]
     constexpr int bishop[2][64] =
     {
         {   // White bishop
@@ -77,7 +102,7 @@ namespace Heatmap {
         }
     };
 
-    // [colour][square] All evaluated from white's perspective
+    // [colour][square]
     constexpr int rook[2][64] = 
     {
         {   // White rook
@@ -102,7 +127,7 @@ namespace Heatmap {
         }
     };
 
-    // [colour][square] All evaluated from white's perspective
+    // [colour][square]
     constexpr int queen[2][64] = 
     {
         {   // White queen
@@ -127,7 +152,7 @@ namespace Heatmap {
         }
     };
 
-    // [midgame/endgame][colour][square] All evaluated from white's perspective
+    // [midgame/endgame][colour][square]
     constexpr int king[2][2][64] = 
     {
         {   // Midgame

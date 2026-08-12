@@ -45,21 +45,6 @@ public:
         int val = 0;
         int index;
         u64 bitboard;
-        
-        // Pawns
-        bitboard = board.pieces[Colour::white][Piece::pawn];
-        while(bitboard){
-            index = GetLSBitIndex(bitboard);
-            val += Heatmap::pawn[Colour::white][index];
-            bitboard &= bitboard - 1;
-        }
-
-        bitboard = board.pieces[Colour::black][Piece::pawn];
-        while(bitboard){
-            index = GetLSBitIndex(bitboard);
-            val -= Heatmap::pawn[Colour::black][index];
-            bitboard &= bitboard - 1;
-        }
 
         // Knights
         bitboard = board.pieces[Colour::white][Piece::knight];
@@ -126,10 +111,25 @@ public:
 
     int StaticEvaluationMidgameExclusive(){
         int val = 0;
-        
-        // King heatmaps
+
+        // Pawn heatmaps
         int index;
         u64 bitboard;
+        bitboard = board.pieces[Colour::white][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::pawn[GameStage::midgame][Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::pawn[GameStage::midgame][Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+        
+        // King heatmaps
         bitboard = board.pieces[Colour::white][Piece::king];
         while(bitboard){
             index = GetLSBitIndex(bitboard);
@@ -150,9 +150,24 @@ public:
     int StaticEvaluationEndgameExclusive(){
         int val = 0;
         
-        // King heatmaps
+        // Pawn heatmaps
         int index;
         u64 bitboard;
+        bitboard = board.pieces[Colour::white][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val += Heatmap::pawn[GameStage::endgame][Colour::white][index];
+            bitboard &= bitboard - 1;
+        }
+
+        bitboard = board.pieces[Colour::black][Piece::pawn];
+        while(bitboard){
+            index = GetLSBitIndex(bitboard);
+            val -= Heatmap::pawn[GameStage::endgame][Colour::black][index];
+            bitboard &= bitboard - 1;
+        }
+
+        // King heatmaps
         bitboard = board.pieces[Colour::white][Piece::king];
         while(bitboard){
             index = GetLSBitIndex(bitboard);
@@ -452,11 +467,9 @@ public:
             if(found_PV){
                 score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV);
 
-                // TRY A TWO-STEP RE-SEARCH PROCESS 
                 if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
             } else{
-                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV);
-                //score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV);
+                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV);
 
                 if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
             }
