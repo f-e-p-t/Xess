@@ -8,10 +8,10 @@ const std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQk
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = start_pos;
+std::string FEN = "r1bqk2r/ppp1bppp/1nn5/4p3/8/P1N2NP1/1P1PPPBP/R1BQK2R w KQkq - 1 8";
 Colour player_playing_as = Colour::black;
-int engine_search_depth_max = 11;
-DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
+int engine_search_depth_max = MAX_PLY;
+DWORD engine_search_time_limit_ms = 30000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 
 // |-----------|

@@ -464,20 +464,15 @@ public:
             bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ply]);
 
             // PVS and LMR
-            //reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
-            reduction = 0;
+            reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
             if(found_PV){
                 score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV_line);
 
                 if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line); }
-            } /*else{
-                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1);
-
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
-            }*/
-
-            else{
+            } else{
                 score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV_line);
+
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line); }
             }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
