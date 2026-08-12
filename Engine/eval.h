@@ -410,16 +410,17 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, int alpha, int beta, int ply, bool on_PV){
+    int Search(int depth, int alpha, int beta, int ply, bool PV_line){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
         bool found_PV = false;
+        bool PV_node = (beta - alpha > 1);
         PV_length[ply] = ply;
 
         // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
-        if(TT_match && info.depth >= depth && !on_PV){
+        if(TT_match && info.depth >= depth && !PV_node){
             int stored_score = info.score;
             
             // Denormalise depth to mate
@@ -428,8 +429,8 @@ public:
 
             if(
                 info.flag == TEntryFlag::exact ||
-                info.flag == TEntryFlag::LB && stored_score >= beta ||
-                info.flag == TEntryFlag::UB && stored_score <= alpha ||
+                (info.flag == TEntryFlag::LB && stored_score >= beta) ||
+                (info.flag == TEntryFlag::UB && stored_score <= alpha) ||
                 alpha >= beta
             ){
                 nodes_searched++; return stored_score;
@@ -449,7 +450,7 @@ public:
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
-        if(on_PV){ ScoreMoveList(list, PV_table[0][ply], ply); }
+        if(PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ply], ply); }
         else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ply); }
         else{ ScoreMoveList(list, 0, ply); }
 
@@ -460,18 +461,23 @@ public:
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
 
-            bool child_on_PV = on_PV && (list.list[i] == PV_table[0][ply]);
+            bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ply]);
 
             // PVS and LMR
-            reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
+            //reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
+            reduction = 0;
             if(found_PV){
-                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV);
+                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV_line);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
-            } else{
-                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV);
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line); }
+            } /*else{
+                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1); }
+            }*/
+
+            else{
+                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV_line);
             }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
@@ -484,7 +490,7 @@ public:
 
                 if(score > alpha){
                     alpha = score; found_PV = true;
-                    
+
                     PV_table[ply][ply] = list.list[i];
                     for(int j = ply + 1; j < PV_length[ply + 1]; j++){ PV_table[ply][j] = PV_table[ply + 1][j]; }
                     PV_length[ply] = PV_length[ply + 1];

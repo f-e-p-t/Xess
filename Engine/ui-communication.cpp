@@ -186,13 +186,6 @@ int main(){
     PrintBoardToTerminal();
     UI_board = board;
 
-    //const u64 bitmask = board.colour_occ[Colour::white];
-    //AttackerInfo info = board.LeastValuableAttackerInMask(bitmask, Square::f2, Colour::white);
-    //std::cout << "\n" << info.piece << " " << info.source << "\n\n";
-
-    //MoveList list; GeneratePseudoLegalMoves(list); PrintMoveListToTerminal(list);
-    //std::cout << "\n\n" << SEE(list.list[8]) << "\n\n";
-
     // ------------
 
     server.run();
