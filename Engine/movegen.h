@@ -2,17 +2,18 @@
 #include "heatmap.h"
 #include <iostream>
 
-const std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = "r1bqk2r/ppp1bppp/1nn5/4p3/8/P1N2NP1/1P1PPPBP/R1BQK2R w KQkq - 1 8";
+std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+std::string FEN = start_pos;
 Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = 30000; // <-- (-1 = no timer)
+DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
+bool wipe_TT_each_move = true;
 
 // |-----------|
 // | The Board |---------------------------------------------------------------
@@ -42,9 +43,9 @@ public:
 
 class Board {
 public:
-    u64 pieces[2][6] = {0};
-    u64 colour_occ[2] = {0};
-    u64 total_occ = 0;
+    u64 pieces[2][6] = {0ULL};
+    u64 colour_occ[2] = {0ULL};
+    u64 total_occ = 0ULL;
 
     Colour to_move;
     uint8_t en_passant_square = Square::NO_SQUARE; // Can only be one square at a time
@@ -650,6 +651,36 @@ public:
 
         return;
     }
+
+    UnmakeMoveGameState MakeNullMove(Colour side){
+        UnmakeMoveGameState state = UnmakeMoveGameState(en_passant_square, castling_rights, halfmove_clock, fullmove_number, hash_key);
+
+        if(en_passant_square != Square::NO_SQUARE){ hash_key ^= EP_keys[en_passant_square]; }
+
+        en_passant_square = Square::NO_SQUARE;
+
+        to_move = static_cast<Colour>(!to_move);
+
+        hash_key ^= side_key;
+
+        // Redundant
+        state.source_piece == Piece::NO_PIECE;
+        state.target_piece == Piece::NO_PIECE;
+
+        return state;
+    }
+
+    void UnmakeNullMove(Colour current_side, UnmakeMoveGameState prev_state){
+        // All that is necessary
+        en_passant_square = prev_state.en_passant_square;
+        hash_key = prev_state.hash_key;
+
+        to_move = static_cast<Colour>(!to_move);
+    }
+
+    bool SideHasNonPawnMaterial(Colour side){
+        return static_cast<bool>(colour_occ[side] & ~pieces[side][Piece::pawn] & ~pieces[side][Piece::king]);
+    }
 private:
 
 };
@@ -708,6 +739,10 @@ public:
 
 class TranspositionTable{
 public:
+    void Wipe(){
+        table.clear();
+    }
+
     void SetSize(u64 megabytes){
         u64 total_bytes = megabytes * 1024 * 1024;
         u64 total_entries = total_bytes / sizeof(TEntry);
@@ -814,6 +849,9 @@ Piece CharToPiece(char c){
 void ParseFEN(std::string FEN){
     int pos = 0;
     int sq = 0;
+
+    for(int i = 0; i < 2; i++){ for(int j = 0; j < 6; j++){ board.pieces[i][j] = 0ULL; }}
+    board.colour_occ[0] = 0ULL; board.colour_occ[1] = 0ULL; board.total_occ = 0ULL;
 
     // The pieces
     while(sq < 64){

@@ -186,6 +186,8 @@ int main(){
     PrintBoardToTerminal();
     UI_board = board;
 
+    //std::cout << engine.Search(2, 1000, 1100, 0, true, false) << "\n\n\n";
+
     // ------------
 
     server.run();
@@ -225,6 +227,9 @@ int main(){
             memset(history_moves, 0, sizeof(history_moves));
             memset(killer_moves, 0, sizeof(killer_moves));
             nodes_searched = 0;
+
+            // CAUTION - CURRENTLY WIPING THE TT AFTER MOVES
+            if(wipe_TT_each_move){ TT.Wipe(); }
         }
 
         PrintBoardToTerminal();

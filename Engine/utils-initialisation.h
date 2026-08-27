@@ -41,6 +41,9 @@ constexpr int WINDOW_WIDTH = 50;
 // Max stage (24 with current values)
 constexpr int STAGE_MAX = 24;
 
+constexpr int NMP_MIN_DEPTH = 3;
+constexpr int NMP_MIN_PLY = 1;
+
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
 enum Square { // Top-left ---> bottom-right as read
@@ -145,8 +148,4 @@ void InitialiseLMRTables(){
 // Asymptotically approaches history_formula_numer
 int HistoryMoveScoringFormula(int x){
     return (history_formula_numer * x) / (x + history_formula_denom);
-}
-
-int HistoryMoveScoringFormulaInverse(int x){
-    return (history_formula_denom * x) / (history_formula_numer - x);
 }

@@ -410,14 +410,13 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, int alpha, int beta, int ply, bool PV_line){
+    int Search(int depth, int alpha, int beta, int ply, bool PV_line, bool NMP_branch){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
         bool found_PV = false;
         bool PV_node = (beta - alpha > 1);
         PV_length[ply] = ply;
 
-        // If this position is in TT, handle returning the stored score
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
         if(TT_match && info.depth >= depth && !PV_node){
@@ -437,15 +436,27 @@ public:
             }
         }
 
-        // Leaf node - hand over to Quiescence
         if(depth == 0){
             return Quiescence(alpha, beta, ply);
         }
 
         nodes_searched++;
 
-        int score = 0; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; bool legal_moves = false; int reduction;
+        int score; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; bool legal_moves = false; int reduction;
         int flag; bool in_check = board.InCheck(board.to_move);
+
+        // NMP
+        int NMP_reduction = 2;
+        if(
+            !NMP_branch && !in_check && !PV_node && depth - 1 - NMP_reduction > 0 && ply >= NMP_MIN_PLY &&
+            board.SideHasNonPawnMaterial(board.to_move) && eval.StaticEvaluation() >= beta
+        ){
+            UnmakeMoveGameState irr_info_null = board.MakeNullMove(board.to_move);
+            int null_score = -Search(depth - 1 - NMP_reduction, -beta, -beta + 1, ply + 1, false, true);
+            board.UnmakeNullMove(board.to_move, irr_info_null);
+            if(stop){ return 0; } // <-- Time limit safety measure
+            if(null_score >= beta){ return null_score; }
+        }
 
         MoveList list; GeneratePseudoLegalMoves(list);
 
@@ -466,13 +477,13 @@ public:
             // PVS and LMR
             reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
             if(found_PV){
-                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV_line);
+                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV_line, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line, false); }
             } else{
-                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV_line);
+                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV_line, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line, false); }
             }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
@@ -569,8 +580,9 @@ public:
 
     void IterativeSearch(){
         int iteration_depth = 1;
+        int s = 0;
         while(iteration_depth <= search_depth_max){
-            int s = Search(iteration_depth, -INFTY, INFTY, 0, true);
+            s = Search(iteration_depth, -INFTY, INFTY, 0, true, false);
 
             // Time has run out - do not update last_PV_table (the one the move is played from) and break
             if(stop){ search_age++; nodes_searched = 0; break; }
