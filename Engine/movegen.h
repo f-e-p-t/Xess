@@ -2,18 +2,20 @@
 #include "heatmap.h"
 #include <iostream>
 
+std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+std::string bad_move = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26 ";
+std::string p1 = "1q1r4/5ppk/1pb4p/p1p1rP2/P1P1PQP1/1P1P4/7P/3RRNK1 w - - 1 35";
+
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
-
-std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 std::string FEN = start_pos;
 Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
-bool wipe_TT_each_move = true;
+bool wipe_TT_each_move = false;
 
 // |-----------|
 // | The Board |---------------------------------------------------------------

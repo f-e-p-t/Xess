@@ -25,6 +25,41 @@ public:
         return mat;
     }
 
+    int PawnStructure(){
+        int val = 0;
+
+        // MAYBE USE A SEPARATE TT FOR PAWN STRUCTURES ???
+
+        // Penalties for isolated pawns
+        const u64 wp = board.pieces[Colour::white][Piece::pawn];
+        if( (wp & FILE_A) && !(wp & FILE_B) ){ val -= 15; }
+        if( (wp & FILE_B) && !(wp & (FILE_A | FILE_C)) ){ val -= 15; }
+        if( (wp & FILE_C) && !(wp & (FILE_B | FILE_D)) ){ val -= 15; }
+        if( (wp & FILE_D) && !(wp & (FILE_C | FILE_E)) ){ val -= 15; }
+        if( (wp & FILE_E) && !(wp & (FILE_D | FILE_F)) ){ val -= 15; }
+        if( (wp & FILE_F) && !(wp & (FILE_E | FILE_G)) ){ val -= 15; }
+        if( (wp & FILE_G) && !(wp & (FILE_F | FILE_H)) ){ val -= 15; }
+        if( (wp & FILE_H) && !(wp & FILE_G) ){ val -= 15; }
+
+        const u64 bp = board.pieces[Colour::black][Piece::pawn];
+        if( (bp & FILE_A) && !(bp & FILE_B) ){ val += 15; }
+        if( (bp & FILE_B) && !(bp & (FILE_A | FILE_C)) ){ val += 15; }
+        if( (bp & FILE_C) && !(bp & (FILE_B | FILE_D)) ){ val += 15; }
+        if( (bp & FILE_D) && !(bp & (FILE_C | FILE_E)) ){ val += 15; }
+        if( (bp & FILE_E) && !(bp & (FILE_D | FILE_F)) ){ val += 15; }
+        if( (bp & FILE_F) && !(bp & (FILE_E | FILE_G)) ){ val += 15; }
+        if( (bp & FILE_G) && !(bp & (FILE_F | FILE_H)) ){ val += 15; }
+        if( (bp & FILE_H) && !(bp & FILE_G) ){ val += 15; }
+
+        // Penalties for doubled pawns
+        const u64 wptrails = (wp << 8) | (wp << 16) | (wp << 24) | (wp << 32) | (wp << 40) | (wp << 48);
+        val -= (20 * NumberOfNonZeroBits(wp & wptrails));
+        const u64 bptrails = (bp >> 8) | (bp >> 16) | (bp >> 24) | (bp >> 32) | (bp >> 40) | (bp >> 48);
+        val += (20 * NumberOfNonZeroBits(bp & bptrails));
+
+        return val;
+    }
+
     // Finds game stage (midgame --> endgame) based on non-pawn pieces on the board. N = 1, B = 1, R = 2, Q = 4
     int Stage(){
         int mat = 0;
@@ -189,6 +224,7 @@ public:
         int stage = Stage();
 
         int val = Material();
+        val += PawnStructure();
 
         val += HandleStageIndependentHeatmaps();
         val += ((stage * StaticEvaluationMidgameExclusive()) + ((STAGE_MAX - stage) * StaticEvaluationEndgameExclusive())) / STAGE_MAX;
@@ -429,8 +465,7 @@ public:
             if(
                 info.flag == TEntryFlag::exact ||
                 (info.flag == TEntryFlag::LB && stored_score >= beta) ||
-                (info.flag == TEntryFlag::UB && stored_score <= alpha) ||
-                alpha >= beta
+                (info.flag == TEntryFlag::UB && stored_score <= alpha)
             ){
                 nodes_searched++; return stored_score;
             }
@@ -448,8 +483,9 @@ public:
         // NMP
         int NMP_reduction = 2;
         if(
-            !NMP_branch && !in_check && !PV_node && depth - 1 - NMP_reduction > 0 && ply >= NMP_MIN_PLY &&
-            board.SideHasNonPawnMaterial(board.to_move) && eval.StaticEvaluation() >= beta
+            !NMP_branch && !in_check && !PV_node && depth - 1 - NMP_reduction >= 0 && ply >= NMP_MIN_PLY &&
+            board.SideHasNonPawnMaterial(board.to_move) &&
+            (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
         ){
             UnmakeMoveGameState irr_info_null = board.MakeNullMove(board.to_move);
             int null_score = -Search(depth - 1 - NMP_reduction, -beta, -beta + 1, ply + 1, false, true);
@@ -523,7 +559,7 @@ public:
 
         // Checkmate and stalemate
         if(!legal_moves){ PV_length[ply] = ply; best_score = (in_check ? -CHECKMATE + ply : STALEMATE); }
-
+        
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
         if(TT_score > CHECKMATE_THRESHOLD){ TT_score += ply; }
@@ -594,12 +630,13 @@ public:
             PrintPVToTerminal();
             std::cout << "\n";
             
-            search_age++;
             nodes_searched = 0;
             iteration_depth++;
 
             memset(killer_moves, 0, sizeof(killer_moves));
         }
+
+        search_age++;
 
         std::cout << "\n";
     }
