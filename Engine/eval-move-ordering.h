@@ -425,3 +425,19 @@ void PrepareBestMove(MoveList& list, int index){
     std::swap(list.list[index], list.list[best_index]);
     std::swap(list.score_list[index], list.score_list[best_index]);
 }
+
+// |--------------|
+// | Search Stack |------------------------------------------------------------
+// |--------------|
+
+// Let the search remember these things about its current variation
+class Stack {
+public:
+    int ply;
+    uint16_t current_move = 0;
+    int static_eval;
+    bool in_check;
+    bool following_PV;
+private:
+
+};

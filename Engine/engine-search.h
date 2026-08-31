@@ -21,12 +21,12 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, int alpha, int beta, int ply, bool PV_line, bool NMP_branch){
+    int Search(int depth, Stack * ss, int alpha, int beta, bool PV_line, bool NMP_branch){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
         bool found_PV = false;
         bool PV_node = (beta - alpha > 1);
-        PV_length[ply] = ply;
+        PV_length[ss->ply] = ss->ply;
 
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
@@ -34,8 +34,8 @@ public:
             int stored_score = info.score;
             
             // Denormalise depth to mate
-            if(stored_score > CHECKMATE_THRESHOLD){ stored_score -= ply; }
-            else if(stored_score < -CHECKMATE_THRESHOLD){ stored_score += ply; }
+            if(stored_score > CHECKMATE_THRESHOLD){ stored_score -= ss->ply; }
+            else if(stored_score < -CHECKMATE_THRESHOLD){ stored_score += ss->ply; }
 
             if(
                 info.flag == TEntryFlag::exact ||
@@ -47,7 +47,7 @@ public:
         }
 
         if(depth == 0){
-            return Quiescence(alpha, beta, ply);
+            return Quiescence(ss, alpha, beta);
         }
 
         nodes_searched++;
@@ -58,16 +58,25 @@ public:
         // NMP
         int NMP_reduction = 2;
         if(
-            !NMP_branch && !in_check && !PV_node && depth - 1 - NMP_reduction >= 0 && ply >= NMP_MIN_PLY &&
+            !NMP_branch && !in_check && !PV_node && depth - 1 - NMP_reduction >= 0 && ss->ply >= NMP_min_ply &&
             board.SideHasNonPawnMaterial(board.to_move) &&
             (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
         ){
             UnmakeMoveGameState irr_info_null = board.MakeNullMove(board.to_move);
-            int null_score = -Search(depth - 1 - NMP_reduction, -beta, -beta + 1, ply + 1, false, true);
+            int null_score = -Search(depth - 1 - NMP_reduction, ss + 1, -beta, -beta + 1, false, true);
             board.UnmakeNullMove(board.to_move, irr_info_null);
             if(stop){ return 0; } // <-- Time limit safety measure
+
             if(null_score >= beta && std::abs(null_score) < CHECKMATE_THRESHOLD){
-                int verification = Search(depth - 1 - NMP_reduction, beta - 1, beta, ply, false, false);
+
+                // Set NMP_min_ply forward to delay NMP in verification search
+                int NMP_min_ply_restore = NMP_min_ply;
+                NMP_min_ply = ss->ply + 3;
+                int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta, false, false);
+                NMP_min_ply = NMP_min_ply_restore;
+                if(stop){ return 0; } // <-- Time limit safety measure
+
+                // Verified
                 if(verification >= beta){ return null_score; }
             }
         }
@@ -75,9 +84,9 @@ public:
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
-        if(PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ply], ply); }
-        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ply); }
-        else{ ScoreMoveList(list, 0, ply); }
+        if(PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ss->ply], ss->ply); }
+        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ss->ply); }
+        else{ ScoreMoveList(list, 0, ss->ply); }
 
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
@@ -86,18 +95,18 @@ public:
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
             legal_moves = true;
 
-            bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ply]);
+            bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ss->ply]);
 
             // PVS and LMR
-            reduction = CalculateLMRReduction(list.list[i], depth, i, ply, in_check);
+            reduction = CalculateLMRReduction(list.list[i], depth, i, ss->ply, in_check);
             if(found_PV){
-                score = -Search(depth - 1 - reduction, -alpha - 1, -alpha, ply + 1, child_on_PV_line, false);
+                score = -Search(depth - 1 - reduction, ss + 1, -alpha - 1, -alpha, child_on_PV_line, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line, false); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
             } else{
-                score = -Search(depth - 1 - reduction, -beta, -alpha, ply + 1, child_on_PV_line, false);
+                score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, -beta, -alpha, ply + 1, child_on_PV_line, false); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
             }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
@@ -111,9 +120,9 @@ public:
                 if(score > alpha){
                     alpha = score; found_PV = true;
 
-                    PV_table[ply][ply] = list.list[i];
-                    for(int j = ply + 1; j < PV_length[ply + 1]; j++){ PV_table[ply][j] = PV_table[ply + 1][j]; }
-                    PV_length[ply] = PV_length[ply + 1];
+                    PV_table[ss->ply][ss->ply] = list.list[i];
+                    for(int j = ss->ply + 1; j < PV_length[ss->ply + 1]; j++){ PV_table[ss->ply][j] = PV_table[ss->ply + 1][j]; }
+                    PV_length[ss->ply] = PV_length[ss->ply + 1];
                 }
             }
 
@@ -121,9 +130,9 @@ public:
             if(best_score >= beta){
                 // Quiet move - insert killer move, update history table
                 if(flag <= 3){
-                    if(list.list[i] != killer_moves[ply].one){
-                        killer_moves[ply].two = killer_moves[ply].one;
-                        killer_moves[ply].one = list.list[i];
+                    if(list.list[i] != killer_moves[ss->ply].one){
+                        killer_moves[ss->ply].two = killer_moves[ss->ply].one;
+                        killer_moves[ss->ply].one = list.list[i];
                     }
                 
                     int source = list.list[i] & 0b0000000000111111;
@@ -136,12 +145,12 @@ public:
         }
 
         // Checkmate and stalemate
-        if(!legal_moves){ PV_length[ply] = ply; best_score = (in_check ? -CHECKMATE + ply : STALEMATE); }
+        if(!legal_moves){ PV_length[ss->ply] = ss->ply; best_score = (in_check ? -CHECKMATE + ss->ply : STALEMATE); }
         
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
-        if(TT_score > CHECKMATE_THRESHOLD){ TT_score += ply; }
-        else if(TT_score < -CHECKMATE_THRESHOLD){ TT_score -= ply; }
+        if(TT_score > CHECKMATE_THRESHOLD){ TT_score += ss->ply; }
+        else if(TT_score < -CHECKMATE_THRESHOLD){ TT_score -= ss->ply; }
         entry.score = TT_score;
 
         // Prepare this position's TT entry
@@ -156,7 +165,7 @@ public:
         return best_score;
     }
 
-    int Quiescence(int alpha, int beta, int ply){
+    int Quiescence(Stack * ss, int alpha, int beta){
         nodes_searched++;
         int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
@@ -166,7 +175,7 @@ public:
 
         bool in_check = board.InCheck(board.to_move);
 
-        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list, ply);
+        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list, ss->ply);
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
 
@@ -181,7 +190,7 @@ public:
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
-            int score = -Quiescence(-beta, -alpha, ply + 1);
+            int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
             if(score > best_score){ best_score = score; }
@@ -195,8 +204,13 @@ public:
     void IterativeSearch(){
         int iteration_depth = 1;
         int s = 0;
+
+        Stack stack[MAX_PLY + 10] = {};
+        Stack * ss = stack + 7;
+        for(int i = 0; i <= MAX_PLY + 2; i++){ (ss + i)->ply = i; }
+        
         while(iteration_depth <= search_depth_max){
-            s = Search(iteration_depth, -INFTY, INFTY, 0, true, false);
+            s = Search(iteration_depth, ss, -INFTY, INFTY, true, false);
 
             // Time has run out - do not update last_PV_table (the one the move is played from) and break
             if(stop){ search_age++; nodes_searched = 0; break; }

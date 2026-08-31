@@ -42,7 +42,6 @@ constexpr int WINDOW_WIDTH = 50;
 constexpr int STAGE_MAX = 24;
 
 constexpr int NMP_MIN_DEPTH = 3;
-constexpr int NMP_MIN_PLY = 1;
 
 enum Piece { pawn, knight, bishop, rook, queen, king, NO_PIECE };
 enum Colour { white, black };
@@ -64,6 +63,7 @@ enum MoveFlag {
 };
 enum TEntryFlag { exact, UB, LB };
 enum GameStage { midgame, endgame };
+uint16_t NULL_MOVE = 0b1111111111111111;
 
 // Empty square - value 0
 int PieceValue(Piece piece){
@@ -149,3 +149,6 @@ void InitialiseLMRTables(){
 int HistoryMoveScoringFormula(int x){
     return (history_formula_numer * x) / (x + history_formula_denom);
 }
+
+// Dynamic so NMP can be prevented or postponed in NMP verification search
+int NMP_min_ply = 1;
