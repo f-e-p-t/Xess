@@ -15,7 +15,7 @@ Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
-bool wipe_TT_each_move = false;
+bool wipe_TT_each_move = true;
 
 // |-----------|
 // | The Board |---------------------------------------------------------------
