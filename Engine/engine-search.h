@@ -24,7 +24,7 @@ public:
     int Search(int depth, Stack * ss, int alpha, int beta, bool PV_line, bool NMP_branch){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
-        bool found_PV = false;
+        bool first_move_searched = false;
         bool PV_node = (beta - alpha > 1);
         PV_length[ss->ply] = ss->ply;
 
@@ -102,17 +102,21 @@ public:
 
             // PVS and LMR
             reduction = CalculateLMRReduction(list.list[i], depth, i, ss->ply, in_check);
-            if(found_PV){
+            if(first_move_searched){
                 score = -Search(depth - 1 - reduction, ss + 1, -alpha - 1, -alpha, child_on_PV_line, false);
 
                 if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
             } else{
-                score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false);
+                if(reduction == 0){ score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                else{
+                    score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                    if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                }
             }
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
+            first_move_searched = true;
 
             if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -121,8 +125,7 @@ public:
                 best_score = score; best_move = list.list[i];
 
                 if(score > alpha){
-                    //if(i==0)std::cout << alpha << " ";
-                    alpha = score; found_PV = true;
+                    alpha = score;
 
                     PV_table[ss->ply][ss->ply] = list.list[i];
                     for(int j = ss->ply + 1; j < PV_length[ss->ply + 1]; j++){ PV_table[ss->ply][j] = PV_table[ss->ply + 1][j]; }

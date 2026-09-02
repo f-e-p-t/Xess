@@ -12,8 +12,8 @@ std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = other1;
-Colour player_playing_as = Colour::white;
+std::string FEN = start_pos;
+Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
