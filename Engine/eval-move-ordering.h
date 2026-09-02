@@ -254,6 +254,13 @@ struct KillerMovePair {
 
 KillerMovePair killer_moves[MAX_PLY];
 
+void WipeKillerTable(){
+    for(int i = 0; i < MAX_PLY; i++){
+        killer_moves[i].one = 0;
+        killer_moves[i].two = 0;
+    }
+}
+
 // [source][target]
 uint16_t history_moves[64][64] = {0};
 

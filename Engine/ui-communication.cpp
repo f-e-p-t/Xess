@@ -223,7 +223,7 @@ int main(){
             memset(PV_length, 0, sizeof(PV_length));
             memset(last_PV_length, 0, sizeof(last_PV_length));
             memset(history_moves, 0, sizeof(history_moves));
-            memset(killer_moves, 0, sizeof(killer_moves));
+            WipeKillerTable();
             nodes_searched = 0;
 
             if(wipe_TT_each_move){ TT.Wipe(); }
