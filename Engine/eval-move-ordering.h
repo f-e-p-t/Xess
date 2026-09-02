@@ -444,7 +444,7 @@ public:
     uint16_t current_move = 0;
     int static_eval;
     bool in_check;
-    bool following_PV;
+    bool on_PV_line;
 private:
 
 };

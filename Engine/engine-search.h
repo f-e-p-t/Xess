@@ -52,7 +52,7 @@ public:
 
         nodes_searched++;
 
-        int score; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; bool legal_moves = false; int reduction;
+        int score; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; int legal_moves = 0; int reduction;
         int flag; bool in_check = board.InCheck(board.to_move);
 
         // NMP
@@ -96,12 +96,11 @@ public:
             flag = (list.list[i] & 0b1111000000000000) >> 12;
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
-            legal_moves = true;
 
             bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ss->ply]);
 
             // PVS and LMR
-            reduction = CalculateLMRReduction(list.list[i], depth, i, ss->ply, in_check);
+            reduction = CalculateLMRReduction(list.list[i], depth, legal_moves, ss->ply, in_check);
             if(first_move_searched){
                 score = -Search(depth - 1 - reduction, ss + 1, -alpha - 1, -alpha, child_on_PV_line, false);
 
@@ -117,6 +116,7 @@ public:
 
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
             first_move_searched = true;
+            legal_moves++;
 
             if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -184,7 +184,7 @@ public:
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
 
-        bool legal_moves = false;
+        int legal_moves = 0;
 
         // If in check, search all moves
         MoveList list; GeneratePseudoLegalMoves(list);
@@ -206,10 +206,10 @@ public:
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
-            legal_moves = true;
 
             int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
+            legal_moves++;
 
             if(score > best_score){ best_score = score; }
             if(score >= beta){ return score; }
