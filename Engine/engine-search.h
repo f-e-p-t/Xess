@@ -69,9 +69,12 @@ public:
 
             if(null_score >= beta && std::abs(null_score) < CHECKMATE_THRESHOLD){
 
+                // If the depth is low enough, skip the verification search
+                if(depth < 10){ return null_score; }                
+
                 // Set NMP_min_ply forward to delay NMP in verification search
                 int NMP_min_ply_restore = NMP_min_ply;
-                NMP_min_ply = ss->ply + 3;
+                NMP_min_ply = ss->ply + 3 + (depth / 4);
                 int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta, false, false);
                 NMP_min_ply = NMP_min_ply_restore;
                 if(stop){ return 0; } // <-- Time limit safety measure
@@ -118,6 +121,7 @@ public:
                 best_score = score; best_move = list.list[i];
 
                 if(score > alpha){
+                    //if(i==0)std::cout << alpha << " ";
                     alpha = score; found_PV = true;
 
                     PV_table[ss->ply][ss->ply] = list.list[i];
@@ -167,29 +171,40 @@ public:
 
     int Quiescence(Stack * ss, int alpha, int beta){
         nodes_searched++;
-        int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
-
-        int best_score = static_eval;
-        if(best_score >= beta){ return best_score; }
-        if(best_score > alpha){ alpha = best_score; }
 
         bool in_check = board.InCheck(board.to_move);
 
-        MoveList list; GeneratePseudoLegalMoves(list); FilterCapturesAndPromotions(list); ScoreQuiescenceMoveList(list, ss->ply);
+        int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
+
+        // Do not stand pat if in check
+        int best_score = (in_check ? -INFTY : static_eval);
+        if(best_score >= beta){ return best_score; }
+        if(best_score > alpha){ alpha = best_score; }
+
+        bool legal_moves = false;
+
+        // If in check, search all moves
+        MoveList list; GeneratePseudoLegalMoves(list);
+        if(!in_check){ FilterCapturesAndPromotions(list); }
+        ScoreQuiescenceMoveList(list, ss->ply);
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
 
-            // If the move is not a pawn promotion, apply delta pruning
-            if( ((list.list[i] & 0b1111000000000000) >> 12) < 8 ){
+            // If the move is a non-pawn-promotion capture and we are not in check, apply delta pruning
+            int flag = ((list.list[i] & 0b1111000000000000) >> 12);
+            if(!in_check && flag > 3 && flag < 8){
                 int target_square = (list.list[i] & 0b0000111111000000) >> 6;
-                Piece target_piece = board.PieceAtSquare(target_square, board.to_move);
+                Piece target_piece = board.PieceAtSquare(target_square, static_cast<Colour>(!board.to_move));
                 int target_value = PieceValue(target_piece);
+                if(flag == MoveFlag::EP_capture){ target_value = PAWN_VALUE_CTP; }
                 
                 if(static_eval + target_value + DELTA < alpha){ continue; }
             }
 
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
+            legal_moves = true;
+
             int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(list.list[i], board.to_move, irr_info);
 
@@ -197,6 +212,8 @@ public:
             if(score >= beta){ return score; }
             if(score > alpha){ alpha = score; }
         }
+
+        if(!legal_moves && in_check){ best_score = -CHECKMATE + ss->ply; }
 
         return best_score;
     }

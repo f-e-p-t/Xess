@@ -19,7 +19,7 @@ constexpr int ROOK_VALUE_CTP = 500;
 constexpr int QUEEN_VALUE_CTP = 900;
 
 // For delta pruning
-constexpr int DELTA = 300;
+constexpr int DELTA = 250;
 
 // For the triangular PV table
 constexpr int MAX_PLY = 64;

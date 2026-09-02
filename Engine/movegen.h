@@ -4,16 +4,18 @@
 
 std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string bad_move = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26 ";
-std::string p1 = "r3r1k1/pp1q1p1p/2pn2p1/8/3R4/2N2Q2/PPP2PPP/5RK1 w - - 0 1";
+std::string quiet_midgame1 = "r2qk2r/pp1b1pbp/2n1pnp1/3pN3/3P3P/2N3P1/PP2PPB1/R1BQ1RK1 b kq - 0 10";
+std::string puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
+std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = p1;
-Colour player_playing_as = Colour::black;
+std::string FEN = other1;
+Colour player_playing_as = Colour::white;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
+DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 bool wipe_TT_each_move = true;
 
