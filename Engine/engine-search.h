@@ -21,7 +21,7 @@ public:
 
     int transposition_table_size_MB;
 
-    int Search(int depth, Stack * ss, int alpha, int beta, bool PV_line, bool NMP_branch){
+    int Search(int depth, Stack * ss, int alpha, int beta, bool NMP_branch){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
         bool first_move_searched = false;
@@ -63,7 +63,7 @@ public:
             (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
         ){
             UnmakeMoveGameState irr_info_null = board.MakeNullMove(board.to_move);
-            int null_score = -Search(depth - 1 - NMP_reduction, ss + 1, -beta, -beta + 1, false, true);
+            int null_score = -Search(depth - 1 - NMP_reduction, ss + 1, -beta, -beta + 1, true);
             board.UnmakeNullMove(board.to_move, irr_info_null);
             if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -75,7 +75,7 @@ public:
                 // Set NMP_min_ply forward to delay NMP in verification search
                 int NMP_min_ply_restore = NMP_min_ply;
                 NMP_min_ply = ss->ply + 3 + (depth / 4);
-                int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta, false, false);
+                int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta, false);
                 NMP_min_ply = NMP_min_ply_restore;
                 if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -87,7 +87,7 @@ public:
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
-        if(PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ss->ply], ss->ply); }
+        if(ss->on_PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ss->ply], ss->ply); }
         else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ss->ply); }
         else{ ScoreMoveList(list, 0, ss->ply); }
 
@@ -97,20 +97,20 @@ public:
             UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
 
-            bool child_on_PV_line = PV_line && (list.list[i] == PV_table[0][ss->ply]);
+            (ss + 1)->on_PV_line = ss->on_PV_line && (list.list[i] == PV_table[0][ss->ply]);
 
             // PVS and LMR
             reduction = CalculateLMRReduction(list.list[i], depth, legal_moves, ss->ply, in_check);
             if(first_move_searched){
-                score = -Search(depth - 1 - reduction, ss + 1, -alpha - 1, -alpha, child_on_PV_line, false);
+                score = -Search(depth - 1 - reduction, ss + 1, -alpha - 1, -alpha, false);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, false); }
             } else{
-                if(reduction == 0){ score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                if(reduction == 0){ score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, false); }
                 else{
-                    score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, child_on_PV_line, false);
+                    score = -Search(depth - 1 - reduction, ss + 1, -beta, -alpha, false);
 
-                    if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, child_on_PV_line, false); }
+                    if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha, false); }
                 }
             }
 
@@ -225,12 +225,14 @@ public:
         int iteration_depth = 1;
         int s = 0;
 
+        // Set up the search stack
         Stack stack[MAX_PLY + 10] = {};
         Stack * ss = stack + 7;
         for(int i = 0; i <= MAX_PLY + 2; i++){ (ss + i)->ply = i; }
-        
+        ss->on_PV_line = true; // (Root node)
+
         while(iteration_depth <= search_depth_max){
-            s = Search(iteration_depth, ss, -INFTY, INFTY, true, false);
+            s = Search(iteration_depth, ss, -INFTY, INFTY, false);
 
             // Time has run out - do not update last_PV_table (the one the move is played from) and break
             if(stop){ search_age++; nodes_searched = 0; break; }
