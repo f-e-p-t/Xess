@@ -1,6 +1,24 @@
 #include "movegen.h"
 #include <iostream>
 
+// |--------------|
+// | Search Stack |------------------------------------------------------------
+// |--------------|
+
+// Let the search remember these things about its current variation
+class Stack {
+public:
+    int ply;
+    uint16_t current_move = 0;
+    int moves_searched = 0;
+    int static_eval;
+    bool in_check;
+    bool on_PV_line;
+    int current_LMR_reduction = 0;
+private:
+
+};
+
 // |------------|
 // | Evaluation |--------------------------------------------------------------
 // |------------|
@@ -237,9 +255,9 @@ private:
 
 Evaluation eval;
 
-// |---------------------|
-// | PV, killer, history |-----------------------------------------------------
-// |---------------------|
+// |-----------------------------------|
+// | PV, killer, history, countermoves |---------------------------------------
+// |-----------------------------------|
 
 uint16_t PV_table[MAX_PLY][MAX_PLY] = {0};
 int PV_length[MAX_PLY] = {0};
@@ -261,8 +279,8 @@ void WipeKillerTable(){
     }
 }
 
-// [source][target]
-uint16_t history_moves[64][64] = {0};
+// [colour][source][target]
+uint16_t history_moves[2][64][64] = {0};
 
 // |-----|
 // | SEE |---------------------------------------------------------------------
@@ -359,7 +377,7 @@ int mvv_lva[6][6] = {
     {100, 320, 300, 500, 900, 0} // By king
 };
 
-int ScoreMove(uint16_t move, int ply){
+int ScoreMove(uint16_t move, Stack * ss){
     int source = move & 0b0000000000111111;
     int target = (move & 0b0000111111000000) >> 6;
     int flag = (move & 0b1111000000000000) >> 12;
@@ -369,56 +387,51 @@ int ScoreMove(uint16_t move, int ply){
     // Captures
     if(flag == 4 || flag == 5 || flag >= 12){
         if(flag == 5){
-            score += (5000 + mvv_lva[0][0]);
+            score += (10000 + mvv_lva[0][0]);
         } else{
             Piece source_piece = board.PieceAtSquare(source, board.to_move);
             Piece target_piece = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
 
             if(PieceValue(source_piece) <= PieceValue(target_piece) && source_piece != Piece::king){
-                score += (5000 + mvv_lva[source_piece][target_piece]);
+                score += (10000 + mvv_lva[source_piece][target_piece]);
                 if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
             } else{
                 int SEE_score = SEE(move);
-                //score += (5000 + mvv_lva[source_piece][target_piece]);
-                //score += (SEE_score >= 0 ? GOOD_CAPTURE_BONUS : -BAD_CAPTURE_PENALTY);
-                //score += 5000 + SEE_score;
-                score += 5000 + (SEE_score >= 0 ? SEE_score : 2 * SEE_score);
+                score += 10000 + (SEE_score >= 0 ? SEE_score : 2 * SEE_score);
             }
         }
     }
 
     // Quiet promotions
     else if(8 <= flag && flag <= 11){
-        score += 5000 + piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
+        score += 10000 + piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP;
     }
 
-    // Quiet moves (killers, history)
+    // Quiet moves
     else if(flag <= 3){
-        // Killers get a slightly smaller bonus than captures
-        if(move == killer_moves[ply].one){ score += 4000; }
-        else if(move == killer_moves[ply].two){ score += 3500; }
+        // Killer table
+        if(move == killer_moves[ss->ply].one){ score += 8000; }
+        else if(move == killer_moves[ss->ply].two){ score += 7500; }
 
-        // History
-        else{
-            score += HistoryMoveScoringFormula(history_moves[source][target]);
-        }
+        // History table
+        score += HistoryMoveScoringFormula(history_moves[board.to_move][source][target]);
     }
 
     return score;
 }
 
-void ScoreMoveList(MoveList& list, uint16_t best_move, int ply){
+void ScoreMoveList(MoveList& list, Stack * ss, uint16_t PV_TT_move){
     for(int i = 0; i < list.count; i++){
-        list.score_list[i] = ScoreMove(list.list[i], ply);
+        list.score_list[i] = ScoreMove(list.list[i], ss);
 
         // A huge bonus for the best move (taken from the TT)
-        if(list.list[i] == best_move){ list.score_list[i] += 10000; }
+        if(list.list[i] == PV_TT_move){ list.score_list[i] += 20000; }
     }
 }
 
-void ScoreQuiescenceMoveList(MoveList& list, int ply){
+void ScoreQuiescenceMoveList(MoveList& list, Stack * ss){
     for(int i = 0; i < list.count; i++){
-        list.score_list[i] = ScoreMove(list.list[i], ply);
+        list.score_list[i] = ScoreMove(list.list[i], ss);
     }
 }
 
@@ -432,21 +445,3 @@ void PrepareBestMove(MoveList& list, int index){
     std::swap(list.list[index], list.list[best_index]);
     std::swap(list.score_list[index], list.score_list[best_index]);
 }
-
-// |--------------|
-// | Search Stack |------------------------------------------------------------
-// |--------------|
-
-// Let the search remember these things about its current variation
-class Stack {
-public:
-    int ply;
-    uint16_t current_move = 0;
-    int moves_searched = 0;
-    int static_eval;
-    bool in_check;
-    bool on_PV_line;
-    int current_LMR_reduction = 0;
-private:
-
-};

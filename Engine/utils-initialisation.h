@@ -29,12 +29,6 @@ constexpr int CHECKMATE = 1000000;
 constexpr int CHECKMATE_THRESHOLD = 900000;
 constexpr int STALEMATE = 0;
 
-constexpr int history_formula_numer = 3000;
-constexpr int history_formula_denom = 1000;
-
-constexpr int GOOD_CAPTURE_BONUS = 200;
-constexpr int BAD_CAPTURE_PENALTY = 200;
-
 // Aspiration window width
 constexpr int WINDOW_WIDTH = 50;
 
@@ -147,7 +141,7 @@ void InitialiseLMRTables(){
 
 // Asymptotically approaches history_formula_numer
 int HistoryMoveScoringFormula(int x){
-    return (history_formula_numer * x) / (x + history_formula_denom);
+    return (3000 * x) / (x + 5000);
 }
 
 // Dynamic so NMP can be prevented or postponed in NMP verification search

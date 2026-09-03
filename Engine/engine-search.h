@@ -55,7 +55,6 @@ public:
         int flag; ss->in_check = board.InCheck(board.to_move); ss->moves_searched = 0;
 
         // NMP
-        // AFTER TESTING IS DONE, REVERT: THE >= BETA CONDITION, 
         int NMP_reduction = 2;
         if(
             (ss - 1)->current_move != NULL_MOVE && !ss->in_check && !PV_node && depth - 1 - NMP_reduction >= 0 &&
@@ -88,9 +87,9 @@ public:
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
-        if(ss->on_PV_line && PV_node){ ScoreMoveList(list, last_PV_table[0][ss->ply], ss->ply); }
-        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, info.best_move, ss->ply); }
-        else{ ScoreMoveList(list, 0, ss->ply); }
+        if(ss->on_PV_line && PV_node){ ScoreMoveList(list, ss, last_PV_table[0][ss->ply]); }
+        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, ss, info.best_move); }
+        else{ ScoreMoveList(list, ss, 0); }
 
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
@@ -136,7 +135,6 @@ public:
 
             // Beta cutoff (fail-high)
             if(best_score >= beta){
-                // Quiet move - insert killer move, update history table
                 if(flag <= 3){
                     if(ss->current_move != killer_moves[ss->ply].one){
                         killer_moves[ss->ply].two = killer_moves[ss->ply].one;
@@ -145,7 +143,7 @@ public:
                 
                     int source = ss->current_move & 0b0000000000111111;
                     int target = (ss->current_move & 0b0000111111000000) >> 6;
-                    history_moves[source][target] += depth * depth;
+                    history_moves[board.to_move][source][target] += depth * depth;
                 }
     
                 break;
@@ -189,14 +187,15 @@ public:
         // If in check, search all moves
         MoveList list; GeneratePseudoLegalMoves(list);
         if(!ss->in_check){ FilterCapturesAndPromotions(list); }
-        ScoreQuiescenceMoveList(list, ss->ply);
+        ScoreQuiescenceMoveList(list, ss);
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
+            ss->current_move = list.list[i];
 
             // If the move is a non-pawn-promotion capture and we are not in check, apply delta pruning
-            int flag = ((list.list[i] & 0b1111000000000000) >> 12);
+            int flag = ((ss->current_move & 0b1111000000000000) >> 12);
             if(!ss->in_check && flag > 3 && flag < 8){
-                int target_square = (list.list[i] & 0b0000111111000000) >> 6;
+                int target_square = (ss->current_move & 0b0000111111000000) >> 6;
                 Piece target_piece = board.PieceAtSquare(target_square, static_cast<Colour>(!board.to_move));
                 int target_value = PieceValue(target_piece);
                 if(flag == MoveFlag::EP_capture){ target_value = PAWN_VALUE_CTP; }
@@ -204,11 +203,11 @@ public:
                 if(static_eval + target_value + DELTA < alpha){ continue; }
             }
 
-            UnmakeMoveGameState irr_info = board.MakeMove(list.list[i], board.to_move);
-            if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(list.list[i], board.to_move, irr_info); continue; }
+            UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
+            if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
 
             int score = -Quiescence(ss + 1, -beta, -alpha);
-            board.UnmakeMove(list.list[i], board.to_move, irr_info);
+            board.UnmakeMove(ss->current_move, board.to_move, irr_info);
             ss->moves_searched++;
 
             if(score > best_score){ best_score = score; }
