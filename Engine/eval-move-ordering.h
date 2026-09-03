@@ -442,9 +442,11 @@ class Stack {
 public:
     int ply;
     uint16_t current_move = 0;
+    int moves_searched = 0;
     int static_eval;
     bool in_check;
     bool on_PV_line;
+    int current_LMR_reduction = 0;
 private:
 
 };
