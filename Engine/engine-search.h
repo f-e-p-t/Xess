@@ -29,7 +29,7 @@ public:
 
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
-        if(TT_match && info.depth >= depth && !PV_node){
+        if(TT_match && !PV_node && info.depth >= depth){
             int stored_score = info.score;
             
             // Denormalise depth to mate
@@ -95,6 +95,29 @@ public:
             PrepareBestMove(list, i);
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
+
+            if(ss->current_move == ss->excluded_move){ continue; }
+
+            // LOTS TO FIX WITH TTSE
+
+            /*
+            // If the current move is the TT move, consider it for TTSE
+            if(
+                ss->ply != 0 && ss->current_move == info.best_move && ss->excluded_move == 0 && depth >= 7 &&
+                info.depth >= depth - 3 && info.flag != TEntryFlag::UB && std::abs(info.score) < CHECKMATE_THRESHOLD
+            ){
+                int singular_beta = info.score - 50;
+                int singular_depth = depth - 2;
+
+                ss->excluded_move = ss->current_move;
+                score = Search(singular_depth, ss, singular_beta - 1, singular_beta);
+                ss->excluded_move = 0;
+
+                if(score < singular_beta){  }
+            }
+            */
+
+            // Make the move
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
 
@@ -140,10 +163,10 @@ public:
                         killer_moves[ss->ply].two = killer_moves[ss->ply].one;
                         killer_moves[ss->ply].one = ss->current_move;
                     }
-                
+
                     int source = ss->current_move & 0b0000000000111111;
                     int target = (ss->current_move & 0b0000111111000000) >> 6;
-                    history_moves[board.to_move][source][target] += depth * depth;
+                    history_moves[board.to_move][source][target] += (depth) * (depth);
                 }
     
                 break;

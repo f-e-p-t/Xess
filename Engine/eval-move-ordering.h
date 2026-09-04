@@ -10,6 +10,7 @@ class Stack {
 public:
     int ply;
     uint16_t current_move = 0;
+    uint16_t excluded_move = 0;
     int moves_searched = 0;
     int static_eval;
     bool in_check;
@@ -397,7 +398,7 @@ int ScoreMove(uint16_t move, Stack * ss){
                 if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
             } else{
                 int SEE_score = SEE(move);
-                score += 10000 + (SEE_score >= 0 ? SEE_score : 2 * SEE_score);
+                score += (SEE_score >= 0 ? (10000 + SEE_score) : (SEE_score));
             }
         }
     }

@@ -3,8 +3,9 @@
 #include <iostream>
 
 std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string bad_move = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26 ";
-std::string quiet_midgame1 = "r2qk2r/pp1b1pbp/2n1pnp1/3pN3/3P3P/2N3P1/PP2PPB1/R1BQ1RK1 b kq - 0 10";
+std::string bad_move1 = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26";
+std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0 18";
+std::string quiet_midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string mate_overestimate = "8/8/2b5/7P/1pk1p3/p7/3pK1pB/8 b - - 1 45";
 std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
@@ -14,9 +15,9 @@ std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
 // |----------|
 
 std::string FEN = start_pos;
-Colour player_playing_as = Colour::white;
+Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
+DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 bool wipe_TT_each_move = true;
 
