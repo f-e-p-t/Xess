@@ -58,7 +58,7 @@ public:
         int NMP_reduction = 2;
         if(
             (ss - 1)->current_move != NULL_MOVE && !ss->in_check && !PV_node && depth - 1 - NMP_reduction >= 0 &&
-            ss->ply >= NMP_min_ply && board.SideHasNonPawnMaterial(board.to_move) &&
+            ss->ply >= NMP_min_ply && board.SideHasNonPawnMaterial(board.to_move) && beta >= -2000 &&
             (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
         ){
             ss->current_move = NULL_MOVE;
@@ -88,7 +88,7 @@ public:
 
         // Move scoring
         if(ss->on_PV_line && PV_node){ ScoreMoveList(list, ss, last_PV_table[0][ss->ply]); }
-        else if(TT_match && info.flag != TEntryFlag::UB){ ScoreMoveList(list, ss, info.best_move); }
+        else if(TT_match){ ScoreMoveList(list, ss, info.best_move); }
         else{ ScoreMoveList(list, ss, 0); }
 
         for(int i = 0; i < list.count; i++){
@@ -96,32 +96,11 @@ public:
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
 
-            if(ss->current_move == ss->excluded_move){ continue; }
-
-            // LOTS TO FIX WITH TTSE
-
-            /*
-            // If the current move is the TT move, consider it for TTSE
-            if(
-                ss->ply != 0 && ss->current_move == info.best_move && ss->excluded_move == 0 && depth >= 7 &&
-                info.depth >= depth - 3 && info.flag != TEntryFlag::UB && std::abs(info.score) < CHECKMATE_THRESHOLD
-            ){
-                int singular_beta = info.score - 50;
-                int singular_depth = depth - 2;
-
-                ss->excluded_move = ss->current_move;
-                score = Search(singular_depth, ss, singular_beta - 1, singular_beta);
-                ss->excluded_move = 0;
-
-                if(score < singular_beta){  }
-            }
-            */
-
             // Make the move
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
 
-            (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == PV_table[0][ss->ply]);
+            (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == last_PV_table[0][ss->ply]);
 
             // PVS and LMR
             ss->current_LMR_reduction = CalculateLMRReduction(ss->current_move, depth, ss->moves_searched, ss->ply, ss->in_check);
@@ -130,12 +109,7 @@ public:
 
                 if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
             } else{
-                if(ss->current_LMR_reduction == 0){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
-                else{
-                    score = -Search(depth - 1 - ss->current_LMR_reduction, ss + 1, -beta, -alpha);
-
-                    if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
-                }
+                score = -Search(depth - 1, ss + 1, -beta, -alpha);
             }
 
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
@@ -223,7 +197,7 @@ public:
                 int target_value = PieceValue(target_piece);
                 if(flag == MoveFlag::EP_capture){ target_value = PAWN_VALUE_CTP; }
                 
-                if(static_eval + target_value + DELTA < alpha){ continue; }
+                if(best_score + target_value + DELTA < alpha){ continue; }
             }
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
@@ -268,8 +242,6 @@ public:
             
             nodes_searched = 0;
             iteration_depth++;
-
-            memset(killer_moves, 0, sizeof(killer_moves));
         }
 
         search_age++;

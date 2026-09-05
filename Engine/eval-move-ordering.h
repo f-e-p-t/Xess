@@ -10,7 +10,6 @@ class Stack {
 public:
     int ply;
     uint16_t current_move = 0;
-    uint16_t excluded_move = 0;
     int moves_searched = 0;
     int static_eval;
     bool in_check;
@@ -411,8 +410,8 @@ int ScoreMove(uint16_t move, Stack * ss){
     // Quiet moves
     else if(flag <= 3){
         // Killer table
-        if(move == killer_moves[ss->ply].one){ score += 8000; }
-        else if(move == killer_moves[ss->ply].two){ score += 7500; }
+        if(move == killer_moves[ss->ply].one){ score += 6999; }
+        else if(move == killer_moves[ss->ply].two){ score += 6500; }
 
         // History table
         score += HistoryMoveScoringFormula(history_moves[board.to_move][source][target]);
