@@ -24,8 +24,11 @@ public:
     int Search(int depth, Stack * ss, int alpha, int beta){
         if(stop){ return 0; } // <-- Time limit safety measure
         const int original_alpha = alpha;
+        bool root_node = (ss->ply == 0);
         bool PV_node = (beta - alpha > 1);
         PV_length[ss->ply] = ss->ply;
+
+        if(depth < 0){ std::cout << "WHAT "; }
 
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
@@ -52,7 +55,9 @@ public:
         nodes_searched++;
 
         int score; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; ss->current_move = 0;
-        int flag; ss->in_check = board.InCheck(board.to_move); ss->moves_searched = 0;
+        int flag; ss->moves_searched = 0;
+        
+        ss->in_check = (root_node ? board.InCheck(board.to_move) : (ss - 1)->current_move_gives_check);
 
         // NMP
         int NMP_reduction = 2;
@@ -62,6 +67,7 @@ public:
             (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
         ){
             ss->current_move = NULL_MOVE;
+            ss->current_move_gives_check = false;
             UnmakeMoveGameState irr_info_null = board.MakeNullMove(board.to_move);
             int null_score = -Search(depth - 1 - NMP_reduction, ss + 1, -beta, -beta + 1);
             board.UnmakeNullMove(board.to_move, irr_info_null);
@@ -96,14 +102,18 @@ public:
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
 
-            // Make the move
+            // Make the move and skip if it is illegal
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
 
+            // Does this move give check? Store in the ss so the child node knows
+            ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
+
+            // Does this move follow the previous iteration's PV?
             (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == last_PV_table[0][ss->ply]);
 
             // PVS and LMR
-            ss->current_LMR_reduction = CalculateLMRReduction(ss->current_move, depth, ss->moves_searched, ss->ply, ss->in_check);
+            ss->current_LMR_reduction = CalculateLMRReduction(depth, ss);
             if(ss->moves_searched){
                 score = -Search(depth - 1 - ss->current_LMR_reduction, ss + 1, -alpha - 1, -alpha);
 
@@ -171,7 +181,8 @@ public:
     int Quiescence(Stack * ss, int alpha, int beta){
         nodes_searched++;
 
-        ss->in_check = board.InCheck(board.to_move);
+        ss->in_check = (ss - 1)->current_move_gives_check;
+
         int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         // Do not stand pat if in check
@@ -202,6 +213,8 @@ public:
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
+
+            ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
 
             int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
@@ -250,26 +263,25 @@ public:
     }
 
     // Also returns 0 if inappropriate to reduce
-    int CalculateLMRReduction(uint16_t move, int depth, int moves, int ply, bool in_check){
-        int source = move & 0b0000000000111111;
-        int target = (move & 0b0000111111000000) >> 6;
-        int flag = (move & 0b1111000000000000) >> 12;
-
-        Piece moved_piece_if_not_promo = board.PieceAtSquare(target, static_cast<Colour>(!board.to_move));
+    int CalculateLMRReduction(int depth, Stack * ss){
+        int source = ss->current_move & 0b0000000000111111;
+        int target = (ss->current_move & 0b0000111111000000) >> 6;
+        int flag = (ss->current_move & 0b1111000000000000) >> 12;
 
         // Conditions to avoid LMR
         if(
-            in_check ||
-            move == killer_moves[ply].one ||
-            move == killer_moves[ply].two
+            ss->in_check ||
+            ss->current_move == killer_moves[ss->ply].one ||
+            ss->current_move == killer_moves[ss->ply].two ||
+            ss->current_move_gives_check
         ){
             return 0;
         }
 
         if(flag <= 3){
-            return LMR_table_quiet[depth][moves];
+            return LMR_table_quiet[depth][ss->moves_searched];
         } else{
-            return LMR_table_captures_promos[depth][moves];
+            return LMR_table_captures_promos[depth][ss->moves_searched];
         }
     }
 

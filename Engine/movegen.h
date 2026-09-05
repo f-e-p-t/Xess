@@ -3,10 +3,11 @@
 #include <iostream>
 
 std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-std::string bad_move1 = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26";
-std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0 18";
-std::string quiet_midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
-std::string puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
+std::string bad_move1 = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26"; // Want a bishop move, preferrably c8d7
+std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0 18"; // Want d8e8 or g6e8
+std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
+std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
+std::string mate_puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string mate_overestimate = "8/8/2b5/7P/1pk1p3/p7/3pK1pB/8 b - - 1 45";
 std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
 

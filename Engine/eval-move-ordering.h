@@ -10,6 +10,7 @@ class Stack {
 public:
     int ply;
     uint16_t current_move = 0;
+    bool current_move_gives_check;
     int moves_searched = 0;
     int static_eval;
     bool in_check;
@@ -397,7 +398,7 @@ int ScoreMove(uint16_t move, Stack * ss){
                 if(flag >= 12){ score += piece_promotion_value_by_flag[flag] - PAWN_VALUE_CTP; }
             } else{
                 int SEE_score = SEE(move);
-                score += (SEE_score >= 0 ? (10000 + SEE_score) : (SEE_score));
+                score += (SEE_score >= 0 ? (10000 + SEE_score) : (6500 + SEE_score));
             }
         }
     }
@@ -412,9 +413,10 @@ int ScoreMove(uint16_t move, Stack * ss){
         // Killer table
         if(move == killer_moves[ss->ply].one){ score += 6999; }
         else if(move == killer_moves[ss->ply].two){ score += 6500; }
-
-        // History table
-        score += HistoryMoveScoringFormula(history_moves[board.to_move][source][target]);
+        else{
+            // History table
+            score += HistoryMoveScoringFormula(history_moves[board.to_move][source][target]);
+        }
     }
 
     return score;

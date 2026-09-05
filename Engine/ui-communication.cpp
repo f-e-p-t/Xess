@@ -193,7 +193,7 @@ int main(){
     // Gameplay loop
     while(GameFinishedType() == GameEnd::in_play){
 
-        // Player to move
+        /*// Player to move
         if(board.to_move == player_playing_as){
             std::string player_input; uint16_t player_move; bool legal_move_chosen = false;
             while(!legal_move_chosen){
@@ -204,10 +204,10 @@ int main(){
             board.MakeMove(player_move, board.to_move);
             UI_board.MakeMove(player_move, UI_board.to_move);
             UpdateLastMoveSourceAndTarget(player_move);
-        }
+        }*/
 
         // Engine to move
-        else {
+        if(true) {
             std::thread th(StartSearchTimer);
             engine.IterativeSearch();
             // NEED TO TERMINATE THE FUNCTION, NOT JUST DELETE THE THREAD
