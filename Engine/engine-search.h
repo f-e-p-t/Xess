@@ -28,6 +28,10 @@ public:
         bool PV_node = (beta - alpha > 1);
         PV_length[ss->ply] = ss->ply;
 
+        // Draw rules
+        game.history_stack[game.steady_ply + ss->ply].hash_key = board.hash_key;
+        if(Repetition(ss) || board.halfmove_clock >= 100 || eval.InsufficientMaterial()){ return DRAW; }
+
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
         if(TT_match && !PV_node && info.depth >= depth){
@@ -201,7 +205,7 @@ public:
                 int target_value = PieceValue(target_piece);
                 if(flag == MoveFlag::EP_capture){ target_value = PAWN_VALUE_CTP; }
                 
-                if(best_score + target_value + DELTA < alpha){ continue; }
+                if(static_eval + target_value + DELTA < alpha){ continue; }
             }
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);

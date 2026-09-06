@@ -9,14 +9,14 @@ std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
 std::string mate_puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string mate_overestimate = "8/8/2b5/7P/1pk1p3/p7/3pK1pB/8 b - - 1 45";
-std::string other1 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+std::string other1 = "8/8/4KN2/8/8/2kq4/8/8 w - - 0 1";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
 std::string FEN = start_pos;
-Colour player_playing_as = Colour::black;
+Colour player_playing_as = Colour::white;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
@@ -710,11 +710,30 @@ struct MoveList {
     int count;
 };
 
-// |----------|
-// | The Game |----------------------------------------------------------------
-// |----------|
+// |--------------|
+// | Search Stack |------------------------------------------------------------
+// |--------------|
 
-class GameHistoryStack {
+// Let the search remember these things about its current variation
+class Stack {
+public:
+    int ply;
+    uint16_t current_move = 0;
+    bool current_move_gives_check;
+    int moves_searched = 0;
+    int static_eval;
+    bool in_check;
+    bool on_PV_line;
+    int current_LMR_reduction = 0;
+private:
+
+};
+
+// |--------------|
+// | Game History |------------------------------------------------------------
+// |--------------|
+
+class HistoryStack {
 public:
     u64 hash_key = 0;
 private:
@@ -723,13 +742,35 @@ private:
 
 class Game {
 public:
-    int ply = 0;
-    GameHistoryStack game_history_stack[MAX_GAME_PLY] = {};
+    int steady_ply = 0;
+    HistoryStack history_stack[MAX_GAME_PLY] = {};
 private:
 
 };
 
 Game game;
+
+// 2-fold in search or 3-fold including history stack
+bool Repetition(Stack * ss){   
+    // Moves that increment HMC are irreversible
+    int max_plies = std::min(game.steady_ply + ss->ply, board.halfmove_clock);
+    int duplicate_keys = 0;
+
+    for(int i = 4; i <= max_plies; i += 2){
+        // Current ply - i
+        int index = game.steady_ply + ss->ply - i;
+
+        if(game.history_stack[index].hash_key == board.hash_key){
+            // 2-fold in search
+            if(index >= game.steady_ply){ return true; }
+            else{ duplicate_keys++; }
+
+            if(duplicate_keys >= 2){ return true; }
+        }
+    }
+
+    return false;
+}
 
 // |---------------------|
 // | Transposition Table |-----------------------------------------------------

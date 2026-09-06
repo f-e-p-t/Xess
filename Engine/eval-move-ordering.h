@@ -1,25 +1,6 @@
 #include "movegen.h"
 #include <iostream>
 
-// |--------------|
-// | Search Stack |------------------------------------------------------------
-// |--------------|
-
-// Let the search remember these things about its current variation
-class Stack {
-public:
-    int ply;
-    uint16_t current_move = 0;
-    bool current_move_gives_check;
-    int moves_searched = 0;
-    int static_eval;
-    bool in_check;
-    bool on_PV_line;
-    int current_LMR_reduction = 0;
-private:
-
-};
-
 // |------------|
 // | Evaluation |--------------------------------------------------------------
 // |------------|
@@ -42,6 +23,32 @@ public:
         mat -= QUEEN_VALUE_CTP * NumberOfNonZeroBits(board.pieces[Colour::black][Piece::queen]);
     
         return mat;
+    }
+
+    // (K vs K) (K + N vs K) (K + B vs K) (K + B vs K + B (same colour bishops))
+    bool InsufficientMaterial(){
+        if(
+            board.pieces[Colour::white][Piece::pawn] != 0ULL || board.pieces[Colour::black][Piece::pawn] != 0ULL ||
+            board.pieces[Colour::white][Piece::rook] != 0ULL || board.pieces[Colour::black][Piece::rook] != 0ULL ||
+            board.pieces[Colour::white][Piece::queen] != 0ULL || board.pieces[Colour::black][Piece::queen] != 0ULL
+        ){
+            return false;
+        }
+
+        int wn_count = NumberOfNonZeroBits(board.pieces[Colour::white][Piece::knight]);
+        int wb_count = NumberOfNonZeroBits(board.pieces[Colour::white][Piece::bishop]);
+        int bn_count = NumberOfNonZeroBits(board.pieces[Colour::black][Piece::knight]);
+        int bb_count = NumberOfNonZeroBits(board.pieces[Colour::black][Piece::bishop]);
+        int total_minors = wn_count + wb_count + bn_count + bb_count;
+
+        if(total_minors == 0 || total_minors == 1){ return true; }
+        else if(wn_count == 0 && wb_count == 1 && bn_count == 0 && bb_count == 1){
+            int wb_pos = GetLSBitIndex(board.pieces[Colour::white][Piece::bishop]);
+            int bb_pos = GetLSBitIndex(board.pieces[Colour::black][Piece::bishop]);
+            if(square_colour_by_index[wb_pos] == square_colour_by_index[bb_pos]){ return true; }
+        }
+
+        return false;
     }
 
     int PawnStructure(){

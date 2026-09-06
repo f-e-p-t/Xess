@@ -23,8 +23,8 @@ void InitialiseAll(){
     PrecomputeBishopAttacksTable();
     PrecomputeRookAttacksTable();
     PrecomputeKingAttacksTable();
-    game.ply = 0;
-    game.game_history_stack[game.ply].hash_key = board.hash_key;
+    game.steady_ply = 0;
+    game.history_stack[game.steady_ply].hash_key = board.hash_key;
 }
 
 // Returns 0 is the move is illegal
@@ -188,9 +188,6 @@ int main(){
     PrintBoardToTerminal();
     UI_board = board;
 
-    perft(5);
-    std::cout << nodes << "\n\n";
-
     // ------------
 
     server.run();
@@ -210,8 +207,8 @@ int main(){
             board.MakeMove(player_move, board.to_move);
             UI_board.MakeMove(player_move, UI_board.to_move);
             UpdateLastMoveSourceAndTarget(player_move);
-            game.ply++;
-            game.game_history_stack[game.ply].hash_key = board.hash_key;
+            game.steady_ply++;
+            game.history_stack[game.steady_ply].hash_key = board.hash_key;
         }
 
         // Engine to move
@@ -225,8 +222,8 @@ int main(){
             board.MakeMove(last_PV_table[0][0], board.to_move);
             UI_board.MakeMove(last_PV_table[0][0], UI_board.to_move);
             UpdateLastMoveSourceAndTarget(last_PV_table[0][0]);
-            game.ply++;
-            game.game_history_stack[game.ply].hash_key = board.hash_key;
+            game.steady_ply++;
+            game.history_stack[game.steady_ply].hash_key = board.hash_key;
 
             memset(PV_table, 0, sizeof(PV_table));
             memset(last_PV_table, 0, sizeof(last_PV_table));

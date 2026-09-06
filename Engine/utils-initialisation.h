@@ -29,6 +29,7 @@ constexpr int INFTY = 1000000000;
 constexpr int CHECKMATE = 1000000;
 constexpr int CHECKMATE_THRESHOLD = 900000;
 constexpr int STALEMATE = 0;
+constexpr int DRAW = 0;
 
 // Aspiration window width
 constexpr int WINDOW_WIDTH = 50;
@@ -75,6 +76,17 @@ int PieceValue(Piece piece){
 int piece_promotion_value_by_flag[16] = {
     0, 0, 0, 0, 0, 0, 0, 0, KNIGHT_VALUE_CTP, BISHOP_VALUE_CTP, ROOK_VALUE_CTP, QUEEN_VALUE_CTP,
     KNIGHT_VALUE_CTP, BISHOP_VALUE_CTP, ROOK_VALUE_CTP, QUEEN_VALUE_CTP
+};
+
+bool square_colour_by_index[64] = {
+    0, 1, 0, 1, 0, 1, 0, 1,
+    1, 0, 1, 0, 1, 0, 1, 0,
+    0, 1, 0, 1, 0, 1, 0, 1,
+    1, 0, 1, 0, 1, 0, 1, 0,
+    0, 1, 0, 1, 0, 1, 0, 1,
+    1, 0, 1, 0, 1, 0, 1, 0,
+    0, 1, 0, 1, 0, 1, 0, 1,
+    1, 0, 1, 0, 1, 0, 1, 0
 };
 
 // |--------------|
