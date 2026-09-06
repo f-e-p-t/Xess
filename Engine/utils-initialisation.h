@@ -22,7 +22,8 @@ constexpr int QUEEN_VALUE_CTP = 900;
 constexpr int DELTA = 250;
 
 // For the triangular PV table
-constexpr int MAX_PLY = 64;
+constexpr int MAX_PLY = 256;
+constexpr int MAX_GAME_PLY = 10000;
 
 constexpr int INFTY = 1000000000;
 constexpr int CHECKMATE = 1000000;

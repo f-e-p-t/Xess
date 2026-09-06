@@ -28,8 +28,6 @@ public:
         bool PV_node = (beta - alpha > 1);
         PV_length[ss->ply] = ss->ply;
 
-        if(depth < 0){ std::cout << "WHAT "; }
-
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
         if(TT_match && !PV_node && info.depth >= depth){
@@ -102,14 +100,9 @@ public:
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
 
-            // Make the move and skip if it is illegal
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
-
-            // Does this move give check? Store in the ss so the child node knows
             ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
-
-            // Does this move follow the previous iteration's PV?
             (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == last_PV_table[0][ss->ply]);
 
             // PVS and LMR

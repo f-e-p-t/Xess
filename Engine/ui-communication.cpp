@@ -23,6 +23,8 @@ void InitialiseAll(){
     PrecomputeBishopAttacksTable();
     PrecomputeRookAttacksTable();
     PrecomputeKingAttacksTable();
+    game.ply = 0;
+    game.game_history_stack[game.ply].hash_key = board.hash_key;
 }
 
 // Returns 0 is the move is illegal
@@ -186,6 +188,9 @@ int main(){
     PrintBoardToTerminal();
     UI_board = board;
 
+    perft(5);
+    std::cout << nodes << "\n\n";
+
     // ------------
 
     server.run();
@@ -193,7 +198,7 @@ int main(){
     // Gameplay loop
     while(GameFinishedType() == GameEnd::in_play){
 
-        /*// Player to move
+        // Player to move
         if(board.to_move == player_playing_as){
             std::string player_input; uint16_t player_move; bool legal_move_chosen = false;
             while(!legal_move_chosen){
@@ -201,13 +206,16 @@ int main(){
                 player_move = ConvertLANMoveToEngineMoveIfLegal(player_input);
                 if(player_move){ legal_move_chosen = true; }
             }
+
             board.MakeMove(player_move, board.to_move);
             UI_board.MakeMove(player_move, UI_board.to_move);
             UpdateLastMoveSourceAndTarget(player_move);
-        }*/
+            game.ply++;
+            game.game_history_stack[game.ply].hash_key = board.hash_key;
+        }
 
         // Engine to move
-        if(true) {
+        else{
             std::thread th(StartSearchTimer);
             engine.IterativeSearch();
             // NEED TO TERMINATE THE FUNCTION, NOT JUST DELETE THE THREAD
@@ -217,6 +225,8 @@ int main(){
             board.MakeMove(last_PV_table[0][0], board.to_move);
             UI_board.MakeMove(last_PV_table[0][0], UI_board.to_move);
             UpdateLastMoveSourceAndTarget(last_PV_table[0][0]);
+            game.ply++;
+            game.game_history_stack[game.ply].hash_key = board.hash_key;
 
             memset(PV_table, 0, sizeof(PV_table));
             memset(last_PV_table, 0, sizeof(last_PV_table));

@@ -9,7 +9,7 @@ std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
 std::string mate_puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string mate_overestimate = "8/8/2b5/7P/1pk1p3/p7/3pK1pB/8 b - - 1 45";
-std::string other1 = "8/pkp5/1p6/4r3/4r3/8/PPP5/1K2R1R1 b - - 0 1";
+std::string other1 = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
 
 // |----------|
 // | Settings |------------------------------------------------------
@@ -213,8 +213,18 @@ public:
                 total_occ ^= both_places;
 
                 // EP square has opened up - hash it into the hash key
-                if(side == Colour::white){ en_passant_square = target + 8; hash_key ^= EP_keys[en_passant_square]; }
-                else{ en_passant_square = target - 8; hash_key ^= EP_keys[en_passant_square]; }
+                if(side == Colour::white){
+                    if(GetBit(pieces[!side][Piece::pawn], target + 1) || GetBit(pieces[!side][Piece::pawn], target - 1)){
+                        en_passant_square = target + 8;
+                        hash_key ^= EP_keys[en_passant_square];
+                    }
+                }
+                else{
+                    if(GetBit(pieces[!side][Piece::pawn], target + 1) || GetBit(pieces[!side][Piece::pawn], target - 1)){
+                        en_passant_square = target - 8;
+                        hash_key ^= EP_keys[en_passant_square];
+                    }
+                }
 
                 hash_key ^= piece_keys[side][source_piece][source];
                 hash_key ^= piece_keys[side][source_piece][target];
@@ -699,6 +709,27 @@ struct MoveList {
     int score_list[256];
     int count;
 };
+
+// |----------|
+// | The Game |----------------------------------------------------------------
+// |----------|
+
+class GameHistoryStack {
+public:
+    u64 hash_key = 0;
+private:
+
+};
+
+class Game {
+public:
+    int ply = 0;
+    GameHistoryStack game_history_stack[MAX_GAME_PLY] = {};
+private:
+
+};
+
+Game game;
 
 // |---------------------|
 // | Transposition Table |-----------------------------------------------------
