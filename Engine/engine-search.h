@@ -23,6 +23,7 @@ public:
 
     int Search(int depth, Stack * ss, int alpha, int beta){
         if(stop){ return 0; } // <-- Time limit safety measure
+
         const int original_alpha = alpha;
         bool root_node = (ss->ply == 0);
         bool PV_node = (beta - alpha > 1);
@@ -56,17 +57,31 @@ public:
 
         nodes_searched++;
 
-        int score; int best_score = -INFTY; uint16_t best_move = 0; TEntry entry; ss->current_move = 0;
-        int flag; ss->moves_searched = 0;
-        
+        int score;
+        int best_score = -INFTY;
+        uint16_t best_move = 0;
+        TEntry entry; ss->current_move = 0;
+        int flag;
+        ss->legal_moves = 0;
+        ss->moves_searched = 0;
         ss->in_check = (root_node ? board.InCheck(board.to_move) : (ss - 1)->current_move_gives_check);
+        ss->rel_static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
+        bool FP_eligible_node = (
+            !root_node &&
+            depth == 1 &&
+            !ss->in_check &&
+            ss->rel_static_eval + FUTILITY_MARGIN <= alpha &&
+            std::abs(alpha) < CHECKMATE_THRESHOLD &&
+            std::abs(beta) < CHECKMATE_THRESHOLD &&
+            board.SideHasNonPawnMaterial(board.to_move) && !PV_node
+        );
 
-        // NMP
+        // Null move pruning
         int NMP_reduction = 2;
         if(
             (ss - 1)->current_move != NULL_MOVE && !ss->in_check && !PV_node && depth - 1 - NMP_reduction >= 0 &&
             ss->ply >= NMP_min_ply && board.SideHasNonPawnMaterial(board.to_move) && beta >= -2000 &&
-            (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation()) >= beta
+            ss->rel_static_eval >= beta
         ){
             ss->current_move = NULL_MOVE;
             ss->current_move_gives_check = false;
@@ -109,6 +124,13 @@ public:
             ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
             (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == last_PV_table[0][ss->ply]);
 
+            // Futility pruning, active after the first move is searched
+            if(FP_eligible_node && flag <= 3 && !ss->current_move_gives_check && ss->moves_searched){
+                board.UnmakeMove(ss->current_move, board.to_move, irr_info);
+                ss->legal_moves++;
+                continue;
+            }
+
             // PVS and LMR
             ss->current_LMR_reduction = CalculateLMRReduction(depth, ss);
             if(ss->moves_searched){
@@ -120,7 +142,7 @@ public:
             }
 
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
-            ss->moves_searched++;
+            ss->legal_moves++; ss->moves_searched++;
 
             if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -155,7 +177,7 @@ public:
         }
 
         // Checkmate and stalemate
-        if(!ss->moves_searched){ PV_length[ss->ply] = ss->ply; best_score = (ss->in_check ? -CHECKMATE + ss->ply : STALEMATE); }
+        if(!ss->legal_moves){ PV_length[ss->ply] = ss->ply; best_score = (ss->in_check ? -CHECKMATE + ss->ply : STALEMATE); }
         
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
@@ -180,14 +202,14 @@ public:
 
         ss->in_check = (ss - 1)->current_move_gives_check;
 
-        int static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
+        ss->rel_static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         // Do not stand pat if in check
-        int best_score = (ss->in_check ? -INFTY : static_eval);
+        int best_score = (ss->in_check ? -INFTY : ss->rel_static_eval);
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
 
-        ss->moves_searched = 0;
+        ss->legal_moves = 0; ss->moves_searched = 0;
 
         // If in check, search all moves
         MoveList list; GeneratePseudoLegalMoves(list);
@@ -205,7 +227,7 @@ public:
                 int target_value = PieceValue(target_piece);
                 if(flag == MoveFlag::EP_capture){ target_value = PAWN_VALUE_CTP; }
                 
-                if(static_eval + target_value + DELTA < alpha){ continue; }
+                if(ss->rel_static_eval + target_value + DELTA < alpha){ continue; }
             }
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
@@ -215,14 +237,14 @@ public:
 
             int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
-            ss->moves_searched++;
+            ss->legal_moves++; ss->moves_searched++;
 
             if(score > best_score){ best_score = score; }
             if(score >= beta){ return score; }
             if(score > alpha){ alpha = score; }
         }
 
-        if(!ss->moves_searched && ss->in_check){ best_score = -CHECKMATE + ss->ply; }
+        if(!ss->legal_moves && ss->in_check){ best_score = -CHECKMATE + ss->ply; }
 
         return best_score;
     }

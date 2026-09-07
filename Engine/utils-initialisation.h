@@ -21,6 +21,9 @@ constexpr int QUEEN_VALUE_CTP = 900;
 // For delta pruning
 constexpr int DELTA = 250;
 
+// For futility pruning
+constexpr int FUTILITY_MARGIN = 200;
+
 // For the triangular PV table
 constexpr int MAX_PLY = 256;
 constexpr int MAX_GAME_PLY = 10000;

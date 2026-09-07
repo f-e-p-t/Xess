@@ -5,27 +5,23 @@
 std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string bad_move1 = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26"; // Want a bishop move, preferrably c8d7
 std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0 18"; // Want d8e8 or g6e8
+std::string finds_move_at_iter_20 = "4r1k1/2R2rb1/3Pq3/4p2Q/1N3pp1/1p6/1P3PP1/5RK1 b - - 1 35"; // want e8d8
 std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
-std::string mate_puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
+std::string mate_puzzle = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string mate_overestimate = "1B6/1p6/2k1K3/8/p1P5/P7/2b5/5q2 b - - 1 48"; // Engine assumes poor play. Best move is f1f5
-std::string other1 = "k7/8/1K4R1/8/8/8/8/8 b - - 0 1";
+std::string other1 = "2kr1b1r/1ppbq2p/p4n2/2p5/3NP1p1/4BP2/PPPN2PP/R2Q1RK1 w - - 0 14";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = mate_overestimate;
-Colour player_playing_as = Colour::white;
+std::string FEN = start_pos;
+Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 bool wipe_TT_each_move = true;
-
-// Mate overestimate bugfixing notes:
-// Setting TT size to 1MB leads to finding the correct move, and correctly identifying the other move with mate in 6.
-// LMR off, NMP on - correct answer but on depth 11
-// LMR on, NMP off - correct answer on depth 10
 
 // |-----------|
 // | The Board |---------------------------------------------------------------
@@ -725,8 +721,9 @@ public:
     int ply;
     uint16_t current_move = 0;
     bool current_move_gives_check;
+    int legal_moves = 0;
     int moves_searched = 0;
-    int static_eval;
+    int rel_static_eval;
     bool in_check;
     bool on_PV_line;
     int current_LMR_reduction = 0;
