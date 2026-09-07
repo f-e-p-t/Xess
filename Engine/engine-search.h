@@ -114,7 +114,7 @@ public:
             if(ss->moves_searched){
                 score = -Search(depth - 1 - ss->current_LMR_reduction, ss + 1, -alpha - 1, -alpha);
 
-                if(score > alpha && score < beta){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
+                if(score > alpha){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
             } else{
                 score = -Search(depth - 1, ss + 1, -beta, -alpha);
             }

@@ -8,19 +8,24 @@ std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0
 std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
 std::string mate_puzzle1 = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
-std::string mate_overestimate = "8/8/2b5/7P/1pk1p3/p7/3pK1pB/8 b - - 1 45";
-std::string other1 = "8/8/4KN2/8/8/2kq4/8/8 w - - 0 1";
+std::string mate_overestimate = "1B6/1p6/2k1K3/8/p1P5/P7/2b5/5q2 b - - 1 48"; // Engine assumes poor play. Best move is f1f5
+std::string other1 = "k7/8/1K4R1/8/8/8/8/8 b - - 0 1";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = start_pos;
+std::string FEN = mate_overestimate;
 Colour player_playing_as = Colour::white;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
+DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 bool wipe_TT_each_move = true;
+
+// Mate overestimate bugfixing notes:
+// Setting TT size to 1MB leads to finding the correct move, and correctly identifying the other move with mate in 6.
+// LMR off, NMP on - correct answer but on depth 11
+// LMR on, NMP off - correct answer on depth 10
 
 // |-----------|
 // | The Board |---------------------------------------------------------------
