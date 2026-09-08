@@ -144,6 +144,8 @@ public:
             // ([]) The test search corrupts ss (this node). Consider creating a copy of the search stack, copying the main
             // stack onto it, then passing the copied version's pointer into the test search. The main stack should be
             // untouched
+            // Alternatively, consider keeping legal_moves and moves_searched locally, although remember this would still
+            // require ss to be manually reverted after the test search has completed.
             // ([]) Only the singular move has extended depth, so ensure the TT reports the original depth. Possible solution
             // is to keep an extension variable and pass in depth + extension to all search calls. Set the extension to 0 at
             // the top of the move loop to reset it each move. Ignore extension for TT insertion.
