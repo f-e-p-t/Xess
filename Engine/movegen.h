@@ -9,14 +9,13 @@ std::string finds_move_at_iter_20 = "4r1k1/2R2rb1/3Pq3/4p2Q/1N3pp1/1p6/1P3PP1/5R
 std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
 std::string mate_puzzle = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
-std::string mate_overestimate = "1B6/1p6/2k1K3/8/p1P5/P7/2b5/5q2 b - - 1 48"; // Engine assumes poor play. Best move is f1f5
-std::string other1 = "2kr1b1r/1ppbq2p/p4n2/2p5/3NP1p1/4BP2/PPPN2PP/R2Q1RK1 w - - 0 14";
+std::string other1 = "rnbqkbnr/ppp2ppp/4p3/8/2pP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = start_pos;
+std::string FEN = mate_puzzle;
 Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
@@ -720,6 +719,7 @@ class Stack {
 public:
     int ply;
     uint16_t current_move = 0;
+    uint16_t excluded_move = 0;
     bool current_move_gives_check;
     int legal_moves = 0;
     int moves_searched = 0;

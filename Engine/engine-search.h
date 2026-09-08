@@ -60,7 +60,8 @@ public:
         int score;
         int best_score = -INFTY;
         uint16_t best_move = 0;
-        TEntry entry; ss->current_move = 0;
+        TEntry entry;
+        ss->current_move = 0;
         int flag;
         ss->legal_moves = 0;
         ss->moves_searched = 0;
@@ -68,12 +69,13 @@ public:
         ss->rel_static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
         bool FP_eligible_node = (
             !root_node &&
+            !PV_node &&
             depth == 1 &&
             !ss->in_check &&
             ss->rel_static_eval + FUTILITY_MARGIN <= alpha &&
             std::abs(alpha) < CHECKMATE_THRESHOLD &&
             std::abs(beta) < CHECKMATE_THRESHOLD &&
-            board.SideHasNonPawnMaterial(board.to_move) && !PV_node
+            board.SideHasNonPawnMaterial(board.to_move)
         );
 
         // Null move pruning
@@ -93,7 +95,7 @@ public:
             if(null_score >= beta && std::abs(null_score) < CHECKMATE_THRESHOLD){
 
                 // If the depth is low enough, skip the verification search
-                if(depth < 10){ return null_score; }                
+                if(depth < 1){ return null_score; }                
 
                 // Set NMP_min_ply forward to delay NMP in verification search
                 int NMP_min_ply_restore = NMP_min_ply;
@@ -104,6 +106,8 @@ public:
 
                 // Verified
                 if(verification >= beta){ return null_score; }
+                //ss->legal_moves = 0;
+                //ss->moves_searched = 0;
             }
         }
 
@@ -115,21 +119,51 @@ public:
         else{ ScoreMoveList(list, ss, 0); }
 
         for(int i = 0; i < list.count; i++){
+            //if(i == 0){ std::cout << ss->legal_moves << " "; }
             PrepareBestMove(list, i);
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
+            ss->legal_moves++;
+
             ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
             (ss + 1)->on_PV_line = ss->on_PV_line && (ss->current_move == last_PV_table[0][ss->ply]);
 
             // Futility pruning, active after the first move is searched
             if(FP_eligible_node && flag <= 3 && !ss->current_move_gives_check && ss->moves_searched){
                 board.UnmakeMove(ss->current_move, board.to_move, irr_info);
-                ss->legal_moves++;
                 continue;
             }
+
+            // TT singular extension
+            // Problems (many not written here):
+            // ([]) Move has already been made, and this is necessary for legality check. However, the test search with the
+            // singular_beta null window goes from the same node, so we must unmake the move first.
+            // ([]) The test search corrupts ss (this node). Consider creating a copy of the search stack, copying the main
+            // stack onto it, then passing the copied version's pointer into the test search. The main stack should be
+            // untouched
+            // ([]) Only the singular move has extended depth, so ensure the TT reports the original depth. Possible solution
+            // is to keep an extension variable and pass in depth + extension to all search calls. Set the extension to 0 at
+            // the top of the move loop to reset it each move. Ignore extension for TT insertion.
+            // ([]) Make sure there was a TT hit before considering the TT move for SE. Otherwise, the move may not be the
+            // first legal move in the move list.
+
+            /*
+            if(
+                !root_node && ss->current_move == info.best_move && !ss->excluded_move && depth >= 6 && TT_match &&
+                info.flag != TEntryFlag::UB && info.depth >= depth - 3 && std::abs(info.score) < CHECKMATE_THRESHOLD
+            ){
+                int singular_beta = info.score - 50;
+                int singular_depth = depth / 2;
+
+                ss->excluded_move = ss->current_move;
+                int singular_test = Search(singular_depth, ss, singular_beta - 1, singular_beta);
+                ss->excluded_move = 0;
+
+                if(singular_test < singular_beta){  } // increase depth for this move only
+            }*/
 
             // PVS and LMR
             ss->current_LMR_reduction = CalculateLMRReduction(depth, ss);
@@ -142,7 +176,7 @@ public:
             }
 
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
-            ss->legal_moves++; ss->moves_searched++;
+            ss->moves_searched++;
 
             if(stop){ return 0; } // <-- Time limit safety measure
 
@@ -200,16 +234,15 @@ public:
     int Quiescence(Stack * ss, int alpha, int beta){
         nodes_searched++;
 
+        ss->legal_moves = 0;
+        ss->moves_searched = 0;
         ss->in_check = (ss - 1)->current_move_gives_check;
-
         ss->rel_static_eval = (board.to_move == Colour::white ? eval.StaticEvaluation() : -eval.StaticEvaluation());
 
         // Do not stand pat if in check
         int best_score = (ss->in_check ? -INFTY : ss->rel_static_eval);
         if(best_score >= beta){ return best_score; }
         if(best_score > alpha){ alpha = best_score; }
-
-        ss->legal_moves = 0; ss->moves_searched = 0;
 
         // If in check, search all moves
         MoveList list; GeneratePseudoLegalMoves(list);
