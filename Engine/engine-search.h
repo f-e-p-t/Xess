@@ -19,6 +19,8 @@ class Engine {
 public:
     int search_depth_max;
 
+    bool TEMPORARY_in_verification = false;
+
     int transposition_table_size_MB;
 
     int Search(int depth, Stack * ss, int alpha, int beta){
@@ -33,11 +35,23 @@ public:
         game.history_stack[game.steady_ply + ss->ply].hash_key = board.hash_key;
         if(Repetition(ss) || board.halfmove_clock >= 100 || eval.InsufficientMaterial()){ return DRAW; }
 
+        // Questions:
+        // Why does disabling TT during NMP verification search make almost every 0-legal_move verification fail (presumably TT hit)
+        // suddenly pass the verification?
+        // When TT is disabled during NMP verification search, almost all verifs succeed
+        // How do these TT hits even happen? A null move only hashes the side key and one would think this means the keys would
+        // never agree in a NMP subtree and the normal verification subtree
+        // Note: If you set ss->current_move back to 0 after the null move search, the TT is never hit during a verification
+        // search with ss->current_move == NULL_MOVE
+        // In losing_pos, every failure up to depth 16 is a TT hit. Disabling the TT during verif introduces new failures,
+        // obviously without TT hits, suggesting the TT isnt a failure-generating machine, and switching it off during verif
+        // is not a magic pass-generating machine
+
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
         if(TT_match && !PV_node && info.depth >= depth){
             int stored_score = info.score;
-            
+
             // Denormalise depth to mate
             if(stored_score > CHECKMATE_THRESHOLD){ stored_score -= ss->ply; }
             else if(stored_score < -CHECKMATE_THRESHOLD){ stored_score += ss->ply; }
@@ -95,22 +109,25 @@ public:
             if(null_score >= beta && std::abs(null_score) < CHECKMATE_THRESHOLD){
 
                 // If the depth is low enough, skip the verification search
-                if(depth < 1){ return null_score; }                
+                if(depth < 1){ return null_score; }
 
                 // Set NMP_min_ply forward to delay NMP in verification search
                 int NMP_min_ply_restore = NMP_min_ply;
                 NMP_min_ply = ss->ply + 3 + (depth / 4);
+                TEMPORARY_in_verification = true;
                 int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta);
+                TEMPORARY_in_verification = false;
                 NMP_min_ply = NMP_min_ply_restore;
-                if(stop){ return 0; } // <-- Time limit safety measure
+                if(stop){ return 0; } // <-- Time limit safety measuress
 
+                //std::cout << ss->current_move << " ";
                 // Verified
                 if(verification >= beta){ return null_score; }
-                //ss->legal_moves = 0;
-                //ss->moves_searched = 0;
+                //std::cout << "(" << ss->legal_moves << ", " << ss->moves_searched << ", " << verification << ") ";
+                //std::cout << ss->current_move << " ";
             }
         }
-
+        
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
@@ -119,7 +136,6 @@ public:
         else{ ScoreMoveList(list, ss, 0); }
 
         for(int i = 0; i < list.count; i++){
-            //if(i == 0){ std::cout << ss->legal_moves << " "; }
             PrepareBestMove(list, i);
             ss->current_move = list.list[i];
             flag = (ss->current_move & 0b1111000000000000) >> 12;
@@ -138,12 +154,12 @@ public:
             }
 
             // TT singular extension
-            // Problems (many not written here):
+            // Problems (probably more unwritten):
             // ([]) Move has already been made, and this is necessary for legality check. However, the test search with the
             // singular_beta null window goes from the same node, so we must unmake the move first.
             // ([]) The test search corrupts ss (this node). Consider creating a copy of the search stack, copying the main
             // stack onto it, then passing the copied version's pointer into the test search. The main stack should be
-            // untouched
+            // untouched. Possibly consider this also for NMP verification search.
             // Alternatively, consider keeping legal_moves and moves_searched locally, although remember this would still
             // require ss to be manually reverted after the test search has completed.
             // ([]) Only the singular move has extended depth, so ensure the TT reports the original depth. Possible solution
@@ -267,12 +283,13 @@ public:
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
+            ss->legal_moves++;
 
             ss->current_move_gives_check = (board.InCheck(static_cast<Colour>(board.to_move)) ? true : false);
 
             int score = -Quiescence(ss + 1, -beta, -alpha);
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
-            ss->legal_moves++; ss->moves_searched++;
+            ss->moves_searched++;
 
             if(score > best_score){ best_score = score; }
             if(score >= beta){ return score; }

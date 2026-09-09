@@ -8,14 +8,16 @@ std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0
 std::string finds_move_at_iter_20 = "4r1k1/2R2rb1/3Pq3/4p2Q/1N3pp1/1p6/1P3PP1/5RK1 b - - 1 35"; // want e8d8
 std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
+std::string puzzle1 = "1rb5/Qpb2pk1/p3p2p/6p1/1P6/P2N1qP1/5P1P/3R1BK1 w - - 1 0";
 std::string mate_puzzle = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
+std::string losing_pos = "6k1/1pq1rp2/2p3p1/2P4p/Pp1P2nP/r4NP1/5P2/2RQ1BK1 w - - 4 33";
 std::string other1 = "rnbqkbnr/ppp2ppp/4p3/8/2pP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = mate_puzzle;
+std::string FEN = losing_pos;
 Colour player_playing_as = Colour::black;
 int engine_search_depth_max = MAX_PLY;
 DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
@@ -681,8 +683,8 @@ public:
         hash_key ^= side_key;
 
         // Redundant
-        state.source_piece == Piece::NO_PIECE;
-        state.target_piece == Piece::NO_PIECE;
+        state.source_piece = Piece::NO_PIECE;
+        state.target_piece = Piece::NO_PIECE;
 
         return state;
     }
