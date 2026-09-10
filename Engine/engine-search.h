@@ -5,8 +5,6 @@
 // | Engine Properties and Functions |-----------------------------------------
 // |---------------------------------|
 
-u64 nodes_searched = 0;
-
 std::atomic<bool> stop = false;
 
 void StartSearchTimer(){
@@ -18,8 +16,6 @@ void StartSearchTimer(){
 class Engine {
 public:
     int search_depth_max;
-
-    bool TEMPORARY_in_verification = false;
 
     int transposition_table_size_MB;
 
@@ -35,21 +31,9 @@ public:
         game.history_stack[game.steady_ply + ss->ply].hash_key = board.hash_key;
         if(Repetition(ss) || board.halfmove_clock >= 100 || eval.InsufficientMaterial()){ return DRAW; }
 
-        // Questions:
-        // Why does disabling TT during NMP verification search make almost every 0-legal_move verification fail (presumably TT hit)
-        // suddenly pass the verification?
-        // When TT is disabled during NMP verification search, almost all verifs succeed
-        // How do these TT hits even happen? A null move only hashes the side key and one would think this means the keys would
-        // never agree in a NMP subtree and the normal verification subtree
-        // Note: If you set ss->current_move back to 0 after the null move search, the TT is never hit during a verification
-        // search with ss->current_move == NULL_MOVE
-        // In losing_pos, every failure up to depth 16 is a TT hit. Disabling the TT during verif introduces new failures,
-        // obviously without TT hits, suggesting the TT isnt a failure-generating machine, and switching it off during verif
-        // is not a magic pass-generating machine
-
         TEntry& info = TT.GetEntry(board.hash_key);
         bool TT_match = (info.hash_key == board.hash_key);
-        if(TT_match && !PV_node && info.depth >= depth){
+        if(TT_match && !PV_node && info.depth >= depth && !ss->excluded_move){
             int stored_score = info.score;
 
             // Denormalise depth to mate
@@ -61,7 +45,7 @@ public:
                 (info.flag == TEntryFlag::LB && stored_score >= beta) ||
                 (info.flag == TEntryFlag::UB && stored_score <= alpha)
             ){
-                nodes_searched++; return stored_score;
+                return stored_score;
             }
         }
 
@@ -69,9 +53,8 @@ public:
             return Quiescence(ss, alpha, beta);
         }
 
-        nodes_searched++;
-
         int score;
+        int new_depth;
         int best_score = -INFTY;
         uint16_t best_move = 0;
         TEntry entry;
@@ -97,7 +80,7 @@ public:
         if(
             (ss - 1)->current_move != NULL_MOVE && !ss->in_check && !PV_node && depth - 1 - NMP_reduction >= 0 &&
             ss->ply >= NMP_min_ply && board.SideHasNonPawnMaterial(board.to_move) && beta >= -2000 &&
-            ss->rel_static_eval >= beta
+            ss->rel_static_eval >= beta && !ss->excluded_move
         ){
             ss->current_move = NULL_MOVE;
             ss->current_move_gives_check = false;
@@ -109,36 +92,40 @@ public:
             if(null_score >= beta && std::abs(null_score) < CHECKMATE_THRESHOLD){
 
                 // If the depth is low enough, skip the verification search
-                if(depth < 1){ return null_score; }
+                if(depth < 10){ return null_score; }
+
+                // Use a duplicate stack for a same-node search call to avoid corrupting ss
+                Stack stack2[MAX_PLY + 10] = {};
+                Stack * ss2 = AlignDuplicateSearchStack(ss, stack2);
 
                 // Set NMP_min_ply forward to delay NMP in verification search
                 int NMP_min_ply_restore = NMP_min_ply;
                 NMP_min_ply = ss->ply + 3 + (depth / 4);
-                TEMPORARY_in_verification = true;
-                int verification = Search(depth - 1 - NMP_reduction, ss, beta - 1, beta);
-                TEMPORARY_in_verification = false;
+                int verification = Search(depth - 1 - NMP_reduction, ss2, beta - 1, beta);
                 NMP_min_ply = NMP_min_ply_restore;
-                if(stop){ return 0; } // <-- Time limit safety measuress
+                if(stop){ return 0; } // <-- Time limit safety measure
 
-                //std::cout << ss->current_move << " ";
                 // Verified
                 if(verification >= beta){ return null_score; }
-                //std::cout << "(" << ss->legal_moves << ", " << ss->moves_searched << ", " << verification << ") ";
-                //std::cout << ss->current_move << " ";
             }
         }
         
         MoveList list; GeneratePseudoLegalMoves(list);
 
         // Move scoring
-        if(ss->on_PV_line && PV_node){ ScoreMoveList(list, ss, last_PV_table[0][ss->ply]); }
+        if(root_node && ss->on_PV_line){ ScoreMoveList(list, ss, last_PV_table[0][ss->ply]); }
         else if(TT_match){ ScoreMoveList(list, ss, info.best_move); }
         else{ ScoreMoveList(list, ss, 0); }
 
         for(int i = 0; i < list.count; i++){
             PrepareBestMove(list, i);
             ss->current_move = list.list[i];
+            assert(ss->current_move != 0);
+            assert(ss->current_move != NULL_MOVE);
             flag = (ss->current_move & 0b1111000000000000) >> 12;
+            new_depth = depth;
+
+            if(ss->current_move == ss->excluded_move){ ss->legal_moves++; continue; }
 
             UnmakeMoveGameState irr_info = board.MakeMove(ss->current_move, board.to_move);
             if(board.InCheck(static_cast<Colour>(!board.to_move))){ board.UnmakeMove(ss->current_move, board.to_move, irr_info); continue; }
@@ -168,29 +155,46 @@ public:
             // ([]) Make sure there was a TT hit before considering the TT move for SE. Otherwise, the move may not be the
             // first legal move in the move list.
 
-            /*
             if(
                 !root_node && ss->current_move == info.best_move && !ss->excluded_move && depth >= 6 && TT_match &&
                 info.flag != TEntryFlag::UB && info.depth >= depth - 3 && std::abs(info.score) < CHECKMATE_THRESHOLD
             ){
-                int singular_beta = info.score - 50;
+                assert(ss->moves_searched == 0);
+                /*if(ss->moves_searched != 0){
+                    std::cout << "fucked ";
+                    PrintMoveToTerminal(info.best_move); std::cout << " ";
+                    std::cout << ss->moves_searched << " ";
+                    std::cout << ss->legal_moves << " ";
+                    std::cout << ss->ply << " ";
+                    std::cout << ss->on_PV_line << " ";
+                    std::cout << ss->rel_static_eval << " ";
+                    std::cout << ss->in_check << " ";
+                }*/
+
+                board.UnmakeMove(ss->current_move, board.to_move, irr_info);
+
+                int singular_beta = info.score - (depth * 2);
                 int singular_depth = depth / 2;
 
-                ss->excluded_move = ss->current_move;
-                int singular_test = Search(singular_depth, ss, singular_beta - 1, singular_beta);
-                ss->excluded_move = 0;
+                Stack stack2[MAX_PLY + 10] = {};
+                Stack * ss2 = AlignDuplicateSearchStack(ss, stack2);
+                ss2->excluded_move = ss->current_move;
 
-                if(singular_test < singular_beta){  } // increase depth for this move only
-            }*/
+                int singular_value = Search(singular_depth, ss2, singular_beta - 1, singular_beta);
+
+                board.MakeMove(ss->current_move, board.to_move);
+
+                if(singular_value < singular_beta){ new_depth++; }
+            }
 
             // PVS and LMR
-            ss->current_LMR_reduction = CalculateLMRReduction(depth, ss);
+            ss->current_LMR_reduction = CalculateLMRReduction(new_depth, ss);
             if(ss->moves_searched){
-                score = -Search(depth - 1 - ss->current_LMR_reduction, ss + 1, -alpha - 1, -alpha);
+                score = -Search(new_depth - 1 - ss->current_LMR_reduction, ss + 1, -alpha - 1, -alpha);
 
-                if(score > alpha){ score = -Search(depth - 1, ss + 1, -beta, -alpha); }
+                if(score > alpha){ score = -Search(new_depth - 1, ss + 1, -beta, -alpha); }
             } else{
-                score = -Search(depth - 1, ss + 1, -beta, -alpha);
+                score = -Search(new_depth - 1, ss + 1, -beta, -alpha);
             }
 
             board.UnmakeMove(ss->current_move, board.to_move, irr_info);
@@ -198,7 +202,6 @@ public:
 
             if(stop){ return 0; } // <-- Time limit safety measure
 
-            // Better move
             if(score > best_score){
                 best_score = score; best_move = ss->current_move;
 
@@ -211,7 +214,6 @@ public:
                 }
             }
 
-            // Beta cutoff (fail-high)
             if(best_score >= beta){
                 if(flag <= 3){
                     if(ss->current_move != killer_moves[ss->ply].one){
@@ -229,7 +231,10 @@ public:
         }
 
         // Checkmate and stalemate
-        if(!ss->legal_moves){ PV_length[ss->ply] = ss->ply; best_score = (ss->in_check ? -CHECKMATE + ss->ply : STALEMATE); }
+        if(!ss->legal_moves){
+            PV_length[ss->ply] = ss->ply;
+            best_score = ss->excluded_move ? alpha : (ss->in_check ? -CHECKMATE + ss->ply : STALEMATE);
+        }
         
         // Normalise depth to mate before inserting into TT
         int TT_score = best_score;
@@ -244,14 +249,12 @@ public:
         else{ entry.flag = TEntryFlag::exact; }
         
         // Insert if appropriate
-        if(TT.AppropriateToOverwrite(info, entry)){ TT.SetEntry(entry, board.hash_key); }
+        if(TT.AppropriateToOverwrite(info, entry) && !ss->excluded_move){ TT.SetEntry(entry, board.hash_key); }
 
         return best_score;
     }
 
     int Quiescence(Stack * ss, int alpha, int beta){
-        nodes_searched++;
-
         ss->legal_moves = 0;
         ss->moves_searched = 0;
         ss->in_check = (ss - 1)->current_move_gives_check;

@@ -1,4 +1,5 @@
 #include <iostream>
+#include <cassert>
 #include <random>
 
 typedef std::uint64_t u64;

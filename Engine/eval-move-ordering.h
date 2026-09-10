@@ -434,7 +434,7 @@ void ScoreMoveList(MoveList& list, Stack * ss, uint16_t PV_TT_move){
         list.score_list[i] = ScoreMove(list.list[i], ss);
 
         // A huge bonus for the best move (taken from the TT)
-        if(list.list[i] == PV_TT_move){ list.score_list[i] += 20000; }
+        if(list.list[i] == PV_TT_move){ list.score_list[i] = 20000; }
     }
 }
 

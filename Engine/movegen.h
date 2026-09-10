@@ -5,28 +5,31 @@
 std::string start_pos = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 std::string bad_move1 = "r1b1kr2/1pp1n3/p5pp/8/1qP5/1B2Q3/PP1R1PPP/4K2R b Kq - 7 26"; // Want a bishop move, preferrably c8d7
 std::string bad_move2 = "2kr1b1r/ppp3pp/5nb1/1N3pN1/3P4/P2B4/5qPP/R2QR2K b - - 0 18"; // Want d8e8 or g6e8
-std::string finds_move_at_iter_20 = "4r1k1/2R2rb1/3Pq3/4p2Q/1N3pp1/1p6/1P3PP1/5RK1 b - - 1 35"; // want e8d8
+std::string finds_move_at_iter_20 = "4r1k1/2R2rb1/3Pq3/4p2Q/1N3pp1/1p6/1P3PP1/5RK1 b - - 1 35"; // Want e8d8
+std::string finds_move_at_iter_16 = "1r2k3/p1q1bp2/2ppbnr1/4p3/4P2p/2NB4/PPP1QPPP/1RB1R1K1 w - - 0 17"; // Want g1h1 
 std::string midgame1 = "r2qrbk1/1pp3pp/1nn2p2/pN2pb2/P7/1P1P1NP1/1B2PPBP/2RQ1RK1 w - - 0 14";
 std::string midgame2 = "r1b1r1k1/1ppq1ppp/1nn5/pQ2p1B1/3b4/2NP1NP1/PP2PPBP/R1R3K1 w - - 4 13";
 std::string puzzle1 = "1rb5/Qpb2pk1/p3p2p/6p1/1P6/P2N1qP1/5P1P/3R1BK1 w - - 1 0";
 std::string mate_puzzle = "5rk1/pp1r1pp1/8/n2N3R/b2P4/P4Q2/1P1q1PPP/1R4K1 w - - 0 1";
 std::string losing_pos = "6k1/1pq1rp2/2p3p1/2P4p/Pp1P2nP/r4NP1/5P2/2RQ1BK1 w - - 4 33";
-std::string other1 = "rnbqkbnr/ppp2ppp/4p3/8/2pP4/4PN2/PP3PPP/RNBQKB1R b KQkq - 0 4";
+std::string other1 = "1r2k3/p1q1bp2/2ppbnr1/4p3/4P2p/2NB4/PPP1QPPP/1RB1R1K1 w - - 0 17";
 
 // |----------|
 // | Settings |------------------------------------------------------
 // |----------|
 
-std::string FEN = losing_pos;
-Colour player_playing_as = Colour::black;
+std::string FEN = start_pos;
+Colour player_playing_as = Colour::white;
 int engine_search_depth_max = MAX_PLY;
-DWORD engine_search_time_limit_ms = -1; // <-- (-1 = no timer)
+DWORD engine_search_time_limit_ms = 15000; // <-- (-1 = no timer)
 int engine_transposition_table_size_MB = 512;
 bool wipe_TT_each_move = true;
 
 // |-----------|
 // | The Board |---------------------------------------------------------------
 // |-----------|
+
+u64 nodes_searched;
 
 class UnmakeMoveGameState {
 public:
@@ -166,6 +169,7 @@ public:
     }
 
     UnmakeMoveGameState MakeMove(uint16_t move, Colour side){
+        nodes_searched++;
         int source = move & 0b0000000000111111;
         int target = (move & 0b0000111111000000) >> 6;
         int flag = (move & 0b1111000000000000) >> 12;
@@ -732,6 +736,13 @@ public:
 private:
 
 };
+
+// Fills duplicate and aligns to same index as current. duplicate must point to the start of the duplicate stack.
+Stack * AlignDuplicateSearchStack(Stack * current, Stack * duplicate){
+    Stack * current_start = current - 7 - current->ply;
+    memcpy(duplicate, current_start, (MAX_PLY + 10) * sizeof(Stack));
+    return (duplicate + 7 + current->ply);
+}
 
 // |--------------|
 // | Game History |------------------------------------------------------------
