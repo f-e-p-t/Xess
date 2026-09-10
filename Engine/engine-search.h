@@ -141,20 +141,6 @@ public:
             }
 
             // TT singular extension
-            // Problems (probably more unwritten):
-            // ([]) Move has already been made, and this is necessary for legality check. However, the test search with the
-            // singular_beta null window goes from the same node, so we must unmake the move first.
-            // ([]) The test search corrupts ss (this node). Consider creating a copy of the search stack, copying the main
-            // stack onto it, then passing the copied version's pointer into the test search. The main stack should be
-            // untouched. Possibly consider this also for NMP verification search.
-            // Alternatively, consider keeping legal_moves and moves_searched locally, although remember this would still
-            // require ss to be manually reverted after the test search has completed.
-            // ([]) Only the singular move has extended depth, so ensure the TT reports the original depth. Possible solution
-            // is to keep an extension variable and pass in depth + extension to all search calls. Set the extension to 0 at
-            // the top of the move loop to reset it each move. Ignore extension for TT insertion.
-            // ([]) Make sure there was a TT hit before considering the TT move for SE. Otherwise, the move may not be the
-            // first legal move in the move list.
-
             if(
                 !root_node && ss->current_move == info.best_move && !ss->excluded_move && depth >= 6 && TT_match &&
                 info.flag != TEntryFlag::UB && info.depth >= depth - 3 && std::abs(info.score) < CHECKMATE_THRESHOLD
